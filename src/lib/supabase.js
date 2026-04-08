@@ -67,6 +67,7 @@ export async function getAllProfiles() {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
+    .in('role', ['admin', 'employee'])
     .order('created_at', { ascending: true })
   if (error) throw error
   return data

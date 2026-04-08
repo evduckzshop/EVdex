@@ -10,12 +10,15 @@ export default function EmployeesPage() {
   const { profile: myProfile } = useAuth()
   const [profiles, setProfiles] = useState([])
   const [loading, setLoading] = useState(true)
+  const [msg, setMsg] = useState({ text: '', type: '' })
+  const [selected, setSelected] = useState(null)
+  const [view, setView] = useState('list') // 'list' | 'invite'
+
+  // Invite form state
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteName, setInviteName] = useState('')
   const [inviteRole, setInviteRole] = useState('employee')
   const [inviting, setInviting] = useState(false)
-  const [msg, setMsg] = useState({ text: '', type: '' })
-  const [selected, setSelected] = useState(null)
 
   const refreshTimerRef = useRef(null)
   useEffect(() => {
@@ -29,7 +32,7 @@ export default function EmployeesPage() {
       const data = await getAllProfiles()
       setProfiles(data)
     } catch (e) {
-      setMsg({ text: 'Error loading employees: ' + e.message, type: 'error' })
+      setMsg({ text: 'Error loading team: ' + e.message, type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -44,9 +47,9 @@ export default function EmployeesPage() {
     setMsg({ text: '', type: '' })
     try {
       await inviteEmployee({ email: inviteEmail.trim().toLowerCase(), fullName: inviteName.trim(), role: inviteRole })
-      setMsg({ text: `Invite sent to ${inviteEmail}! They'll receive an email to set their password.`, type: 'success' })
+      setMsg({ text: `Invite sent to ${inviteEmail}!`, type: 'success' })
       setInviteEmail(''); setInviteName(''); setInviteRole('employee')
-      refreshTimerRef.current = setTimeout(loadProfiles, 1500)
+      refreshTimerRef.current = setTimeout(() => { loadProfiles(); setView('list') }, 1500)
     } catch (e) {
       setMsg({ text: 'Invite failed: ' + e.message, type: 'error' })
     } finally {
@@ -77,73 +80,127 @@ export default function EmployeesPage() {
     }
   }
 
-  return (
-    <div style={{ paddingTop: 16 }}>
+  const activeCount = profiles.filter(p => p.is_active).length
+  const adminCount = profiles.filter(p => p.role === 'admin').length
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-        {[
-          { label: 'Total members', val: profiles.length, color: C.accent2 },
-          { label: 'Active', val: profiles.filter(p => p.is_active).length, color: C.green },
-        ].map(s => (
-          <div key={s.label} style={{ background: C.surface2, borderRadius: 12, padding: 12 }}>
-            <div style={{ fontSize: 10, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>{s.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.val}</div>
+  // ── INVITE VIEW ─────────────────────────────────────────────
+  if (view === 'invite') {
+    return (
+      <div style={{ paddingTop: 12 }}>
+        <div style={{ background: 'linear-gradient(135deg,#0f1a2a,#1E293B)', borderRadius: 18, padding: 18, marginBottom: 14, border: '1px solid rgba(37,99,235,.2)' }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.5)', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+            New team member
           </div>
-        ))}
+          <div style={{ fontSize: 24, fontWeight: 700, color: '#fff', letterSpacing: -0.5, margin: '4px 0 2px' }}>
+            Invite Employee
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>
+            They'll receive an email to set their password
+          </div>
+        </div>
+
+        {msg.text && (
+          <div style={{
+            background: msg.type === 'error' ? 'rgba(248,113,113,.08)' : 'rgba(16,185,129,.08)',
+            border: `1px solid ${msg.type === 'error' ? 'rgba(248,113,113,.2)' : 'rgba(16,185,129,.2)'}`,
+            borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13,
+            color: msg.type === 'error' ? C.red : C.green,
+          }}>
+            {msg.text}
+          </div>
+        )}
+
+        <form onSubmit={handleInvite}>
+          <label style={{ ...labelStyle, marginTop: 0 }}>Full name</label>
+          <input value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Jane Smith" style={inputStyle} />
+
+          <label style={labelStyle}>Email address</label>
+          <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="jane@example.com" style={inputStyle} />
+
+          <label style={labelStyle}>Role</label>
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            {['employee', 'admin'].map(r => (
+              <button key={r} type="button" onClick={() => setInviteRole(r)} style={{
+                flex: 1, padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                border: `1px solid ${inviteRole === r ? 'rgba(37,99,235,.4)' : C.border2}`,
+                background: inviteRole === r ? 'rgba(37,99,235,.15)' : C.surface2,
+                color: inviteRole === r ? C.accent2 : C.text3,
+              }}>
+                {r.charAt(0).toUpperCase() + r.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          <button type="submit" disabled={inviting} style={{
+            width: '100%', padding: 14, borderRadius: 12, marginTop: 20,
+            background: inviting ? '#374151' : C.accent, border: 'none',
+            fontSize: 14, fontWeight: 600, color: '#fff', cursor: inviting ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+          }}>
+            {inviting ? 'Sending invite...' : 'Send Invite'}
+          </button>
+        </form>
+
+        <button onClick={() => { setView('list'); setMsg({ text: '', type: '' }) }} style={{
+          width: '100%', padding: 12, borderRadius: 12, marginTop: 8,
+          background: 'transparent', border: `1px solid ${C.border2}`,
+          fontSize: 13, fontWeight: 500, color: C.text2, cursor: 'pointer', fontFamily: 'inherit',
+        }}>
+          Back to Team
+        </button>
+        <div style={{ height: 20 }} />
+      </div>
+    )
+  }
+
+  // ── LIST VIEW ───────────────────────────────────────────────
+  return (
+    <div style={{ paddingTop: 12 }}>
+      {/* Hero */}
+      <div style={{ background: 'linear-gradient(135deg,#0f1a2a,#1E293B)', borderRadius: 18, padding: 18, marginBottom: 14, border: '1px solid rgba(37,99,235,.2)' }}>
+        <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.5)', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+          Your team
+        </div>
+        <div style={{ fontSize: 26, fontWeight: 700, color: '#fff', letterSpacing: -1, margin: '4px 0 2px' }}>
+          {profiles.length} member{profiles.length !== 1 ? 's' : ''}
+        </div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>
+          {activeCount} active · {adminCount} admin{adminCount !== 1 ? 's' : ''}
+        </div>
       </div>
 
       {msg.text && (
         <div style={{
           background: msg.type === 'error' ? 'rgba(248,113,113,.08)' : 'rgba(16,185,129,.08)',
           border: `1px solid ${msg.type === 'error' ? 'rgba(248,113,113,.2)' : 'rgba(16,185,129,.2)'}`,
-          borderRadius: 10, padding: '10px 14px', marginBottom: 14,
-          fontSize: 13, color: msg.type === 'error' ? C.red : C.green, lineHeight: 1.5,
+          borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13,
+          color: msg.type === 'error' ? C.red : C.green,
         }}>
           {msg.text}
         </div>
       )}
 
-      {/* Invite form */}
-      <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-        Invite new employee
-      </div>
-      <div style={{ background: C.surface, borderRadius: 14, padding: 14, border: `1px solid ${C.border}`, marginBottom: 16 }}>
-        <form onSubmit={handleInvite}>
-          <label style={labelStyle}>Full name</label>
-          <input value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Jane Smith" style={inputStyle} />
-          <label style={labelStyle}>Email address</label>
-          <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="jane@evdex.com" style={inputStyle} />
-          <label style={labelStyle}>Role</label>
-          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            {['employee', 'admin'].map(r => (
-              <button key={r} type="button" onClick={() => setInviteRole(r)} style={{
-                flex: 1, padding: '8px', borderRadius: 9, border: `1px solid ${inviteRole === r ? 'rgba(37,99,235,.4)' : C.border2}`,
-                background: inviteRole === r ? 'rgba(37,99,235,.15)' : C.surface2,
-                color: inviteRole === r ? C.accent2 : C.text3, fontSize: 12, fontWeight: 500, cursor: 'pointer',
-              }}>
-                {r.charAt(0).toUpperCase() + r.slice(1)}
-              </button>
-            ))}
-          </div>
-          <div style={{ fontSize: 11, color: C.text3, marginTop: 10, padding: '8px 10px', background: 'rgba(37,99,235,.05)', borderRadius: 8, border: `1px solid rgba(37,99,235,.1)` }}>
-            An invite email will be sent. The employee sets their own password on first login.
-          </div>
-          <button type="submit" disabled={inviting} style={{
-            width: '100%', padding: '12px', borderRadius: 11, marginTop: 14,
-            background: C.accent, border: 'none', fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer',
-          }}>
-            {inviting ? 'Sending invite…' : 'Send invite'}
-          </button>
-        </form>
-      </div>
+      {/* Invite button */}
+      <button onClick={() => { setView('invite'); setMsg({ text: '', type: '' }) }} style={{
+        width: '100%', padding: 12, borderRadius: 12, marginBottom: 14,
+        background: 'rgba(37,99,235,.08)', border: '1px solid rgba(37,99,235,.15)',
+        fontSize: 13, fontWeight: 600, color: '#3B82F6', cursor: 'pointer', fontFamily: 'inherit',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+      }}>
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+          <circle cx="10" cy="10" r="7" stroke="#3B82F6" strokeWidth="1.5"/>
+          <path d="M10 7v6M7 10h6" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+        Invite Team Member
+      </button>
 
       {/* Team list */}
       <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>
         Team members
       </div>
       {loading ? (
-        <div style={{ textAlign: 'center', color: C.text3, padding: 24 }}>Loading…</div>
+        <div style={{ textAlign: 'center', color: C.text3, padding: 24 }}>Loading...</div>
+      ) : profiles.length === 0 ? (
+        <div style={{ textAlign: 'center', color: C.text3, padding: 24, fontSize: 13 }}>No team members yet.</div>
       ) : (
         profiles.map(p => (
           <div key={p.id}>
@@ -169,16 +226,25 @@ export default function EmployeesPage() {
                   {p.id === myProfile?.id && <span style={{ fontSize: 9, color: C.text3 }}>(you)</span>}
                 </div>
                 <div style={{ fontSize: 10, color: C.text3, marginTop: 2 }}>
-                  {p.role.charAt(0).toUpperCase() + p.role.slice(1)} · Joined {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                  Joined {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </div>
               </div>
-              <span style={{
-                fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 20,
-                background: p.is_active ? 'rgba(16,185,129,.1)' : 'rgba(248,113,113,.1)',
-                color: p.is_active ? C.green : C.red,
-              }}>
-                {p.is_active ? 'Active' : 'Inactive'}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                  background: p.role === 'admin' ? 'rgba(37,99,235,.12)' : 'rgba(16,185,129,.1)',
+                  color: p.role === 'admin' ? C.accent2 : C.green,
+                }}>
+                  {p.role.charAt(0).toUpperCase() + p.role.slice(1)}
+                </span>
+                <span style={{
+                  fontSize: 9, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                  background: p.is_active ? 'rgba(16,185,129,.1)' : 'rgba(248,113,113,.1)',
+                  color: p.is_active ? C.green : C.red,
+                }}>
+                  {p.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
             </div>
 
             {/* Expanded actions */}
@@ -186,11 +252,11 @@ export default function EmployeesPage() {
               <div style={{ background: C.surface2, borderRadius: 10, padding: '10px 12px', marginBottom: 8, marginTop: -2, border: `1px solid ${C.border2}` }}>
                 <div style={{ fontSize: 11, color: C.text3, marginBottom: 8 }}>Actions for {p.full_name}</div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => changeRole(p.id, p.role === 'admin' ? 'employee' : 'admin')} style={{ padding: '7px 14px', borderRadius: 9, background: 'rgba(37,99,235,.12)', border: '1px solid rgba(37,99,235,.2)', fontSize: 12, fontWeight: 600, color: C.accent2, cursor: 'pointer' }}>
+                  <button onClick={() => changeRole(p.id, p.role === 'admin' ? 'employee' : 'admin')} style={{ padding: '7px 14px', borderRadius: 9, background: 'rgba(37,99,235,.12)', border: '1px solid rgba(37,99,235,.2)', fontSize: 12, fontWeight: 600, color: C.accent2, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Make {p.role === 'admin' ? 'Employee' : 'Admin'}
                   </button>
                   <button onClick={() => toggleActive(p.id, p.is_active)} style={{
-                    padding: '7px 14px', borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    padding: '7px 14px', borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                     background: p.is_active ? 'rgba(248,113,113,.08)' : 'rgba(16,185,129,.08)',
                     border: `1px solid ${p.is_active ? 'rgba(248,113,113,.2)' : 'rgba(16,185,129,.2)'}`,
                     color: p.is_active ? C.red : C.green,
@@ -203,6 +269,7 @@ export default function EmployeesPage() {
           </div>
         ))
       )}
+      <div style={{ height: 16 }} />
     </div>
   )
 }
