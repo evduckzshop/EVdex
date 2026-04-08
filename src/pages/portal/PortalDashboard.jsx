@@ -38,8 +38,7 @@ export default function PortalDashboard() {
         supabase.from('customer_badges')
           .select('*, badge_definitions(*)')
           .eq('customer_id', user.id)
-          .order('earned_at', { ascending: false })
-          .limit(6),
+          .order('earned_at', { ascending: false }),
         supabase.from('reward_events')
           .select('*')
           .eq('customer_id', user.id)
@@ -65,6 +64,12 @@ export default function PortalDashboard() {
   const tierName = tier?.tier || 'Bronze Duck'
   const toNext = tier?.points_to_next_tier ? Math.ceil(tier.points_to_next_tier) : null
 
+  // Find highest earned progression badge (lifetime_spend based)
+  const progressionBadge = badges
+    .filter(b => b.badge_definitions?.threshold?.lifetime_spend)
+    .sort((a, b) => (b.badge_definitions.threshold.lifetime_spend || 0) - (a.badge_definitions.threshold.lifetime_spend || 0))
+    [0]?.badge_definitions || null
+
   // Progress to next tier
   const tierMins = { bronze: 0, silver: 500, gold: 2000, diamond: 10000 }
   const tierOrder = ['bronze', 'silver', 'gold', 'diamond']
@@ -88,7 +93,7 @@ export default function PortalDashboard() {
         <div style={{ fontSize: 24, fontWeight: 700, color: '#fff', letterSpacing: -0.5, margin: '4px 0 2px' }}>
           {profile?.full_name || 'Customer'}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 16 }}>{TIER_ICONS[tierSlug]}</span>
           <span style={{
             fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
@@ -96,6 +101,17 @@ export default function PortalDashboard() {
           }}>
             {tierName}
           </span>
+          {progressionBadge && (
+            <>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,.3)' }}>·</span>
+              <span style={{
+                fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
+                background: 'rgba(245,158,11,.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,.25)',
+              }}>
+                {progressionBadge.name}
+              </span>
+            </>
+          )}
         </div>
       </div>
 

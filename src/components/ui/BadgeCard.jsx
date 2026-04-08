@@ -16,11 +16,7 @@ function getBadgeEffect(badge) {
 
   if (spend >= 10000) return 'holo'      // Legendary — full rainbow holo
   if (spend >= 5000)  return 'gold-glow'  // Grail Hunter — gold glow
-  if (spend >= 2500)  return 'pulse-glow' // Gym Leader — pulsing glow
-  if (spend >= 1000)  return 'shine'      // Elite — bright shimmer
-  if (spend >= 500)   return 'shimmer'    // Premium — shimmer
-  if (spend >= 250)   return 'subtle'     // Enthusiast — subtle shine
-  return null                              // Collector ($100) — no effect
+  return null                              // All others — no effect
 }
 
 const C = {
