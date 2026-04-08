@@ -127,50 +127,35 @@ serve(async (req) => {
 
     // ── 7. Update contact email ───────────────────────────────
     if (contactId) {
-      await adminClient
-        .from('contacts')
-        .update({ email: email.toLowerCase() })
-        .eq('id', contactId)
-        .catch(() => {})
+      try { await adminClient.from('contacts').update({ email: email.toLowerCase() }).eq('id', contactId) } catch {}
     }
 
     // ── 8. Log invite + activity (non-critical) ───────────────
-    await adminClient.from('invites').insert({
-      email: email.toLowerCase(),
-      role: 'customer',
-      contact_id: contactId || null,
-      invited_by: caller.id,
-      accepted: false,
-    }).catch(() => {})
+    try { await adminClient.from('invites').insert({
+      email: email.toLowerCase(), role: 'customer', contact_id: contactId || null,
+      invited_by: caller.id, accepted: false,
+    }) } catch {}
 
-    await adminClient.from('activity_logs').insert({
-      user_id: caller.id,
-      action_type: 'invite_customer',
-      entity_type: 'customers',
-      entity_id: newUserId,
-      summary: `Invited customer: ${fullName} (${email})`,
-    }).catch(() => {})
+    try { await adminClient.from('activity_logs').insert({
+      user_id: caller.id, action_type: 'invite_customer', entity_type: 'customers',
+      entity_id: newUserId, summary: `Invited customer: ${fullName} (${email})`,
+    }) } catch {}
 
     // ── 9. Award Bronze Duck badge (non-critical) ─────────────
-    const { data: bronzeBadge } = await adminClient
-      .from('badge_definitions')
-      .select('id')
-      .eq('slug', 'bronze_duck')
-      .maybeSingle()
+    try {
+      const { data: bronzeBadge } = await adminClient
+        .from('badge_definitions').select('id').eq('slug', 'bronze_duck').maybeSingle()
 
-    if (bronzeBadge) {
-      await adminClient.from('customer_badges').insert({
-        customer_id: newUserId,
-        badge_id: bronzeBadge.id,
-      }).catch(() => {})
-
-      await adminClient.from('reward_events').insert({
-        customer_id: newUserId,
-        event_type: 'badge_earned',
-        points: 0,
-        description: 'Welcome badge: Bronze Duck',
-      }).catch(() => {})
-    }
+      if (bronzeBadge) {
+        await adminClient.from('customer_badges').insert({
+          customer_id: newUserId, badge_id: bronzeBadge.id,
+        })
+        await adminClient.from('reward_events').insert({
+          customer_id: newUserId, event_type: 'badge_earned',
+          points: 0, description: 'Welcome badge: Bronze Duck',
+        })
+      }
+    } catch {}
 
     // ── 10. Success ───────────────────────────────────────────
     return new Response(
