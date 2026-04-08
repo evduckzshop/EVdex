@@ -22,7 +22,7 @@ export default function SalesPage() {
   const [desc, setDesc] = useState('')
   const [market, setMarket] = useState('')
   const [price, setPrice] = useState('')
-  const [pct, setPct] = useState('100')
+  const [pct, setPct] = useState('')
   const [cost, setCost] = useState('')
   const [buyer, setBuyer] = useState('')
   const [payment, setPayment] = useState('Cash')
@@ -85,7 +85,8 @@ export default function SalesPage() {
       if (editId && editRecord) {
         await update(editId, record)
         setMsg({ text: 'Sale updated!', type: 'success' })
-        setTimeout(() => navigate('/sales', { replace: true }), 600)
+        resetForm()
+        setTimeout(() => navigate('/', { replace: true }), 600)
       } else {
         await insert(record)
         setMsg({ text: 'Sale saved!', type: 'success' })
@@ -100,7 +101,7 @@ export default function SalesPage() {
   }
 
   function resetForm() {
-    setSaleType('Single card'); setDesc(''); setMarket(''); setPrice(''); setPct('100')
+    setSaleType('Single card'); setDesc(''); setMarket(''); setPrice(''); setPct('')
     setCost(''); setBuyer(''); setPayment('Cash'); setShowId(''); setPhotoFile(null); setPhotoName('')
   }
 

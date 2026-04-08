@@ -23,7 +23,7 @@ export default function BuysPage() {
   const [condition, setCondition] = useState('NM')
   const [market, setMarket] = useState('')
   const [paid, setPaid] = useState('')
-  const [pct, setPct] = useState('100')
+  const [pct, setPct] = useState('')
   const [source, setSource] = useState('')
   const [payment, setPayment] = useState('Cash')
   const [notes, setNotes] = useState('')
@@ -92,7 +92,8 @@ export default function BuysPage() {
       if (editId && editRecord) {
         await update(editId, record)
         setMsg({ text: 'Buy updated!', type: 'success' })
-        setTimeout(() => navigate('/buys', { replace: true }), 600)
+        resetForm()
+        setTimeout(() => navigate('/', { replace: true }), 600)
       } else {
         await insert(record)
         setMsg({ text: 'Buy saved!', type: 'success' })
@@ -108,7 +109,7 @@ export default function BuysPage() {
 
   function resetForm() {
     setBuyType('Singles'); setDesc(''); setQty(''); setCondition('NM')
-    setMarket(''); setPaid(''); setPct('100'); setSource(''); setPayment('Cash')
+    setMarket(''); setPaid(''); setPct(''); setSource(''); setPayment('Cash')
     setNotes(''); setShowId(''); setPhotoFile(null); setPhotoName('')
   }
 

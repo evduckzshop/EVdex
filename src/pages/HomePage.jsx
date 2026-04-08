@@ -59,6 +59,7 @@ function ActivityDetail({ item, onClose, isAdmin, onDelete, navigate }) {
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [photoExpanded, setPhotoExpanded] = useState(false)
   const isSale = item.type === 'sale'
   const isBuy = item.type === 'buy'
   const isExpense = item.type === 'expense'
@@ -149,9 +150,24 @@ function ActivityDetail({ item, onClose, isAdmin, onDelete, navigate }) {
 
         {/* Photo */}
         {item.photo_url && (
-          <div style={{ marginBottom: 12, borderRadius: 12, overflow: 'hidden', border: `1px solid ${C.border}` }}>
-            <img src={item.photo_url} alt={item.description} style={{ width: '100%', maxHeight: 200, objectFit: 'cover', display: 'block' }} />
+          <div onClick={() => setPhotoExpanded(!photoExpanded)} style={{ marginBottom: 12, borderRadius: 12, overflow: 'hidden', border: `1px solid ${C.border}`, cursor: 'pointer', position: 'relative' }}>
+            <img src={item.photo_url} alt={item.description} style={{ width: '100%', maxHeight: photoExpanded ? 'none' : 200, objectFit: photoExpanded ? 'contain' : 'cover', display: 'block', background: '#0F172A' }} />
+            {!photoExpanded && (
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 0 6px', background: 'linear-gradient(transparent, rgba(0,0,0,.6))', textAlign: 'center' }}>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,.7)', fontWeight: 500 }}>Tap to expand</span>
+              </div>
+            )}
           </div>
+        )}
+
+        {/* Full-screen photo overlay */}
+        {item.photo_url && photoExpanded && (
+          <>
+            <div onClick={() => setPhotoExpanded(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.9)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+              <img src={item.photo_url} alt={item.description} style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8 }} />
+              <div style={{ position: 'absolute', top: 16, right: 16, fontSize: 13, color: '#fff', background: 'rgba(255,255,255,.15)', padding: '6px 14px', borderRadius: 20, cursor: 'pointer' }}>Close</div>
+            </div>
+          </>
         )}
 
         {/* Amount hero */}
