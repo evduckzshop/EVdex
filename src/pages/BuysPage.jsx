@@ -153,7 +153,10 @@ export default function BuysPage() {
           </div>
           <div>
             <Label>Grade</Label>
-            <Input value={condition} onChange={e => setCondition(e.target.value)} placeholder="e.g. 10, 9.5" />
+            <Select value={condition} onChange={e => setCondition(e.target.value)}>
+              <option value="">Select...</option>
+              {['10','9.5','9','8.5','8','7.5','7','6.5','6','5.5','5','4.5','4','3.5','3','2.5','2','1.5','1'].map(g => <option key={g}>{g}</option>)}
+            </Select>
           </div>
         </div>
       )}
