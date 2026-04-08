@@ -187,14 +187,47 @@ export default function PongPage() {
       ctx.fill()
       ctx.shadowBlur = 0
 
-      // Ball
-      ctx.fillStyle = '#fff'
-      ctx.shadowColor = '#fff'
-      ctx.shadowBlur = 8
+      // Pokeball
+      const bx = s.ball.x, by = s.ball.y, br = BALL_R + 2
+      ctx.save()
+      // Outer glow
+      ctx.shadowColor = '#F87171'
+      ctx.shadowBlur = 10
+      // Top half (red)
+      ctx.fillStyle = '#DC2626'
       ctx.beginPath()
-      ctx.arc(s.ball.x, s.ball.y, BALL_R, 0, Math.PI * 2)
+      ctx.arc(bx, by, br, Math.PI, 0)
       ctx.fill()
       ctx.shadowBlur = 0
+      // Bottom half (white)
+      ctx.fillStyle = '#fff'
+      ctx.beginPath()
+      ctx.arc(bx, by, br, 0, Math.PI)
+      ctx.fill()
+      // Center band (black)
+      ctx.strokeStyle = '#1a1a1a'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(bx - br, by)
+      ctx.lineTo(bx + br, by)
+      ctx.stroke()
+      // Outline
+      ctx.strokeStyle = '#1a1a1a'
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.arc(bx, by, br, 0, Math.PI * 2)
+      ctx.stroke()
+      // Center button (outer)
+      ctx.fillStyle = '#1a1a1a'
+      ctx.beginPath()
+      ctx.arc(bx, by, br * 0.38, 0, Math.PI * 2)
+      ctx.fill()
+      // Center button (inner)
+      ctx.fillStyle = '#fff'
+      ctx.beginPath()
+      ctx.arc(bx, by, br * 0.22, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
 
       // Scores on canvas
       ctx.font = '600 32px -apple-system, sans-serif'
