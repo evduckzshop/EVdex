@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import {
+  getDateRange, formatDateRange, computeSummary,
+  fetchIncomeReport, fetchPurchaseReport, fetchExpenseReport,
+  fetchInventoryReport, fetchShowPLReport,
+  generateCSV, generatePDF, downloadFile,
+} from '../lib/exportUtils'
 
 const C = {
   surface: '#1E293B', surface2: '#162032', surface3: '#0F172A',
@@ -309,85 +315,228 @@ export function ReportingPage() {
   )
 }
 
-// ── EXPORT CSV ───────────────────────────────────────────────────
+// ── EXPORT CENTER ───────────────────────────────────────────────
+
+const REPORT_PRESETS = [
+  { key: 'income',    label: 'Income',    desc: 'All sales with price, payment, buyer, show. Tax-ready income log for your LLC.', columns: 'Date, Description, Type, Sale Price, Cost Basis, Payment, Buyer, Show' },
+  { key: 'purchases', label: 'Purchases', desc: 'All purchases with amount, source, condition, show. Cost of goods for tax deductions.', columns: 'Date, Description, Type, Qty, Condition, Amount Paid, Market Value, % of Market, Source, Payment, Show' },
+  { key: 'expenses',  label: 'Expenses',  desc: 'All expenses grouped by category. Deductible business expenses with subtotals.', columns: 'Date, Description, Category, Amount, Payment, Show' },
+  { key: 'inventory', label: 'Inventory', desc: 'Current stock with cost basis and listed price. End-of-year asset valuation.', columns: 'Name, Type, Qty, Condition, Cost Basis, Listed Price, Total Cost, Total Listed' },
+  { key: 'show_pl',   label: 'Show P&L',  desc: 'Per-show profit & loss breakdown. Revenue, COGS, fees, expenses, and net profit for each show.', columns: 'Show, Date, Location, Revenue, COGS, Table Fee, Expenses, Net Profit' },
+]
+
+const DATE_PRESETS = [
+  { key: 'this_month',   label: 'This Month' },
+  { key: 'last_month',   label: 'Last Month' },
+  { key: 'this_quarter', label: 'This Quarter' },
+  { key: 'this_year',    label: 'This Year' },
+  { key: 'last_year',    label: 'Last Year' },
+  { key: 'custom',       label: 'Custom' },
+]
+
+const REPORT_ICONS = {
+  income:    <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="#10B981" strokeWidth="1.5"/><path d="M10 6.5v7M7 10h6" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  purchases: <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M3 3h2.5l2.5 9h8l2-6H7" stroke="#F87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="9" cy="17" r="1.2" fill="#F87171"/><circle cx="15" cy="17" r="1.2" fill="#F87171"/></svg>,
+  expenses:  <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 2v16M6 5.5C6 4 7.8 3 10 3s4 1 4 2.5S12.2 8 10 8 6 9.5 6 11s1.8 3.5 4 3.5 4-1.5 4-3" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  inventory: <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="#60A5FA" strokeWidth="1.5"/><path d="M3 8h14" stroke="#60A5FA" strokeWidth="1.5"/></svg>,
+  show_pl:   <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><rect x="2.5" y="4.5" width="15" height="12" rx="2" stroke="#A78BFA" strokeWidth="1.5"/><path d="M2.5 8h15M7 2v5M13 2v5" stroke="#A78BFA" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+}
+
+const REPORT_COLORS = {
+  income:    { bg: 'rgba(16,185,129,.1)', border: 'rgba(16,185,129,.3)', text: '#10B981' },
+  purchases: { bg: 'rgba(248,113,113,.1)', border: 'rgba(248,113,113,.3)', text: '#F87171' },
+  expenses:  { bg: 'rgba(245,158,11,.1)', border: 'rgba(245,158,11,.3)', text: '#F59E0B' },
+  inventory: { bg: 'rgba(96,165,250,.1)', border: 'rgba(96,165,250,.3)', text: '#60A5FA' },
+  show_pl:   { bg: 'rgba(167,139,250,.1)', border: 'rgba(167,139,250,.3)', text: '#A78BFA' },
+}
+
 export function ExportPage() {
-  const [exporting, setExporting] = useState('')
+  const [report, setReport] = useState('income')
+  const [datePre, setDatePre] = useState('this_year')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
+  const [format, setFormat] = useState('csv')
+  const [exporting, setExporting] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
 
-  async function doExport(type) {
-    setExporting(type)
+  const preset = REPORT_PRESETS.find(p => p.key === report)
+  const rc = REPORT_COLORS[report]
+
+  async function handleExport() {
+    setExporting(true)
     setMsg({ text: '', type: '' })
-    const tableMap = { sales: 'sales', buys: 'buys', expenses: 'expenses', inventory: 'inventory', shows: 'shows', contacts: 'contacts' }
 
     try {
-      if (type === 'all') {
-        // Export all tables as a combined download
-        const tables = ['sales','buys','expenses','inventory','shows','contacts']
-        let csv = ''
-        for (const t of tables) {
-          const { data, error } = await supabase.from(t).select('*').order('created_at', { ascending: false })
-          if (error) throw error
-          if (data?.length) {
-            csv += `\n\n=== ${t.toUpperCase()} ===\n`
-            csv += Object.keys(data[0]).join(',') + '\n'
-            csv += data.map(row => Object.values(row).map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n')
-          }
-        }
-        downloadCSV(csv, 'evdex_full_export.csv')
-      } else {
-        const { data, error } = await supabase.from(tableMap[type] || type).select('*').order('created_at', { ascending: false })
-        if (error) throw error
-        if (!data?.length) { setMsg({ text: 'No data to export.', type: 'error' }); return }
-        const csv = [Object.keys(data[0]).join(','), ...data.map(row => Object.values(row).map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(','))].join('\n')
-        downloadCSV(csv, `evdex_${type}_${new Date().toISOString().split('T')[0]}.csv`)
+      const { start, end } = getDateRange(datePre, customStart, customEnd)
+      const dateLabel = formatDateRange(datePre, start, end)
+
+      // Fetch data based on report type
+      let rows
+      switch (report) {
+        case 'income':    rows = await fetchIncomeReport(start, end); break
+        case 'purchases': rows = await fetchPurchaseReport(start, end); break
+        case 'expenses':  rows = await fetchExpenseReport(start, end); break
+        case 'inventory': rows = await fetchInventoryReport(); break
+        case 'show_pl':   rows = await fetchShowPLReport(start, end); break
+        default: throw new Error('Unknown report type')
       }
-    } catch (e) { setMsg({ text: 'Export error: ' + e.message, type: 'error' }) }
-    finally { setExporting('') }
-  }
 
-  function downloadCSV(csv, filename) {
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
-    URL.revokeObjectURL(url)
-  }
+      if (!rows.length) {
+        setMsg({ text: 'No data found for the selected period.', type: 'error' })
+        return
+      }
 
-  const exports = [
-    { key: 'sales', label: 'Sales log', desc: 'All sale records with market %' },
-    { key: 'buys', label: 'Buys log', desc: 'All purchase records' },
-    { key: 'expenses', label: 'Expenses', desc: 'All expenses by category' },
-    { key: 'inventory', label: 'Inventory', desc: 'Current stock with cost & listed price' },
-    { key: 'shows', label: 'Show reports', desc: 'All card shows with totals' },
-    { key: 'contacts', label: 'Contacts', desc: 'Buyers, sellers & wholesalers' },
-  ]
+      const summary = computeSummary(rows, report)
+      const title = `${preset.label} Report`
+      const dateSuffix = datePre === 'custom' ? `${customStart}_${customEnd}` : datePre
+      const baseName = `evdex_${report}_${dateSuffix}_${new Date().toISOString().split('T')[0]}`
+
+      if (format === 'csv') {
+        const csv = generateCSV(rows, title, dateLabel, summary)
+        downloadFile(csv, `${baseName}.csv`)
+      } else {
+        const doc = await generatePDF(rows, title, dateLabel, summary)
+        doc.save(`${baseName}.pdf`)
+      }
+
+      setMsg({ text: `${title} downloaded as ${format.toUpperCase()}.`, type: 'success' })
+    } catch (e) {
+      console.error('Export error:', e)
+      setMsg({ text: 'Export failed: ' + e.message, type: 'error' })
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <div style={{ paddingTop: 12 }}>
+      {/* Hero */}
       <div style={{ background: 'linear-gradient(135deg,#0f1a2a,#1E293B)', borderRadius: 18, padding: 18, marginBottom: 16, border: '1px solid rgba(37,99,235,.2)' }}>
-        <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.5)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Export data</div>
-        <div style={{ fontSize: 24, fontWeight: 700, color: '#fff', letterSpacing: -0.5, margin: '4px 0 2px' }}>CSV export</div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>Compatible with Excel &amp; Google Sheets. Each file includes date stamp, timestamp, and all fields.</div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.5)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Export center</div>
+        <div style={{ fontSize: 24, fontWeight: 700, color: '#fff', letterSpacing: -0.5, margin: '4px 0 2px' }}>Tax-ready reports</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>Clean, formatted exports for your LLC. CSV for spreadsheets, PDF for records.</div>
       </div>
 
+      {/* Toast */}
       {msg.text && (
         <div style={{ background: msg.type === 'error' ? 'rgba(248,113,113,.08)' : 'rgba(16,185,129,.08)', border: `1px solid ${msg.type === 'error' ? 'rgba(248,113,113,.2)' : 'rgba(16,185,129,.2)'}`, borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: msg.type === 'error' ? C.red : C.green }}>{msg.text}</div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
-        {exports.map(e => (
-          <button key={e.key} onClick={() => doExport(e.key)} disabled={!!exporting} style={{ padding: '12px 10px', borderRadius: 12, background: C.surface, border: `1px solid ${C.border2}`, cursor: exporting ? 'not-allowed' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 3 }}>{exporting === e.key ? 'Downloading…' : e.label}</div>
-            <div style={{ fontSize: 10, color: C.text3 }}>{e.desc}</div>
+      {/* Report type selector */}
+      <div style={sectionHd}>Report type</div>
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 14, paddingBottom: 2 }}>
+        {REPORT_PRESETS.map(p => {
+          const active = report === p.key
+          const clr = REPORT_COLORS[p.key]
+          return (
+            <button key={p.key} onClick={() => setReport(p.key)} style={{
+              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6,
+              padding: '7px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+              cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+              border: `1px solid ${active ? clr.border : C.border2}`,
+              background: active ? clr.bg : C.surface,
+              color: active ? clr.text : C.text2,
+            }}>
+              {REPORT_ICONS[p.key]}
+              {p.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Date range */}
+      {report !== 'inventory' && (
+        <>
+          <div style={sectionHd}>Date range</div>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: datePre === 'custom' ? 10 : 14, paddingBottom: 2 }}>
+            {DATE_PRESETS.map(d => (
+              <button key={d.key} onClick={() => setDatePre(d.key)} style={{
+                flexShrink: 0, padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                border: `1px solid ${datePre === d.key ? 'rgba(37,99,235,.4)' : C.border2}`,
+                background: datePre === d.key ? 'rgba(37,99,235,.2)' : C.surface,
+                color: datePre === d.key ? C.accent2 : C.text2,
+              }}>
+                {d.label}
+              </button>
+            ))}
+          </div>
+          {datePre === 'custom' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+              <div>
+                <div style={{ fontSize: 9, color: C.text3, marginBottom: 4, fontWeight: 500 }}>Start date</div>
+                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} style={{
+                  width: '100%', padding: '10px 12px', background: C.surface, border: `1px solid ${C.border2}`,
+                  borderRadius: 11, fontSize: 13, color: C.text, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
+                  colorScheme: 'dark',
+                }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 9, color: C.text3, marginBottom: 4, fontWeight: 500 }}>End date</div>
+                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={{
+                  width: '100%', padding: '10px 12px', background: C.surface, border: `1px solid ${C.border2}`,
+                  borderRadius: 11, fontSize: 13, color: C.text, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
+                  colorScheme: 'dark',
+                }} />
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Format toggle */}
+      <div style={sectionHd}>Format</div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {[
+          { key: 'csv', label: 'CSV', sub: 'Excel / Sheets', icon: <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M4 2h8l4 4v12a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.3"/><path d="M12 2v4h4" stroke="currentColor" strokeWidth="1.3"/></svg> },
+          { key: 'pdf', label: 'PDF', sub: 'Print-ready', icon: <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M4 2h8l4 4v12a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.3"/><path d="M12 2v4h4M7 10h6M7 13h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg> },
+        ].map(f => (
+          <button key={f.key} onClick={() => setFormat(f.key)} style={{
+            flex: 1, padding: '12px 14px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
+            border: `1px solid ${format === f.key ? 'rgba(37,99,235,.4)' : C.border2}`,
+            background: format === f.key ? 'rgba(37,99,235,.12)' : C.surface,
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <div style={{ color: format === f.key ? C.accent2 : C.text3 }}>{f.icon}</div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: format === f.key ? C.accent2 : C.text }}>{f.label}</div>
+              <div style={{ fontSize: 10, color: C.text3 }}>{f.sub}</div>
+            </div>
           </button>
         ))}
       </div>
 
-      <button onClick={() => doExport('all')} disabled={!!exporting} style={{ width: '100%', padding: '13px', borderRadius: 12, background: exporting ? '#374151' : C.accent, border: 'none', fontSize: 14, fontWeight: 600, color: '#fff', cursor: exporting ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
-        {exporting === 'all' ? 'Preparing full export…' : 'Export everything · all time'}
+      {/* Export button */}
+      <button onClick={handleExport} disabled={exporting} style={{
+        width: '100%', padding: 14, borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 600,
+        color: '#fff', cursor: exporting ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+        background: exporting ? '#374151' : `linear-gradient(135deg, ${rc.text}, ${C.accent})`,
+        transition: 'opacity .15s',
+      }}>
+        {exporting ? 'Preparing report...' : `Download ${preset.label} Report as ${format.toUpperCase()}`}
       </button>
 
-      <div style={{ fontSize: 11, color: C.text3, textAlign: 'center', marginTop: 10 }}>
-        Downloads to your device · open in Files, Excel, or Google Sheets
+      {/* Report description card */}
+      <div style={{ ...rcard, marginTop: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: rc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {REPORT_ICONS[report]}
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{preset.label} Report</div>
+        </div>
+        <div style={{ fontSize: 12, color: C.text2, lineHeight: 1.5, marginBottom: 10 }}>{preset.desc}</div>
+        <div style={{ fontSize: 9, fontWeight: 600, color: C.text3, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 5 }}>Columns included</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {preset.columns.split(', ').map(col => (
+            <span key={col} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: 'rgba(255,255,255,.04)', color: C.text2, border: `1px solid ${C.border}` }}>
+              {col}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ fontSize: 11, color: C.text3, textAlign: 'center', marginTop: 10, marginBottom: 16 }}>
+        Admin only · Downloads to your device
       </div>
     </div>
   )
@@ -496,7 +645,7 @@ export function SettingsPage() {
 
       <div style={sectionHd}>Data</div>
       <div style={rcard}>
-        <div style={rrow}><div style={{ fontSize: 13, color: C.text2 }}>Export all data</div><a href="/export" style={{ fontSize: 12, color: C.accent2, textDecoration: 'none', fontWeight: 500 }}>Export CSV →</a></div>
+        <div style={rrow}><div style={{ fontSize: 13, color: C.text2 }}>Export all data</div><a href="/export" style={{ fontSize: 12, color: C.accent2, textDecoration: 'none', fontWeight: 500 }}>Export →</a></div>
         <div style={rrowLast}><div style={{ fontSize: 13, color: C.text2 }}>Supabase project</div><div style={{ fontSize: 12, color: C.text3 }}>Connected</div></div>
       </div>
 
