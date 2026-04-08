@@ -294,7 +294,9 @@ const pillColor = r => r === 'Buyer' ? '#60A5FA' : r === 'Seller' ? C.red : r ==
 const pillBg = r => r === 'Buyer' ? 'rgba(37,99,235,.12)' : r === 'Seller' ? 'rgba(248,113,113,.12)' : r === 'Wholesaler' ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.12)'
 
 export function ContactsPage() {
-  const { insert, rows, fetch, loading } = useContacts()
+  const { insert, update, remove, rows, fetch, loading } = useContacts()
+  const { isAdmin } = useAuth()
+  const [editId, setEditId] = useState(null)
   const [name, setName] = useState('')
   const [role, setRole] = useState('Seller')
   const [phone, setPhone] = useState('')
@@ -302,26 +304,69 @@ export function ContactsPage() {
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   useEffect(() => { fetch() }, [])
+
+  function startEdit(contact) {
+    setEditId(contact.id)
+    setName(contact.name || '')
+    setRole(contact.role || 'Seller')
+    setPhone(contact.phone || '')
+    setPay(contact.preferred_pay || 'Cash')
+    setNotes(contact.notes || '')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function cancelEdit() {
+    setEditId(null)
+    setName(''); setPhone(''); setNotes(''); setRole('Seller'); setPay('Cash')
+  }
 
   async function handleSave() {
     if (!name.trim()) { setMsg({ text: 'Please enter a name.', type: 'error' }); return }
     setSaving(true)
     try {
-      await insert({ name: name.trim(), role, phone: phone||null, preferred_pay: pay, notes: notes||null })
-      setMsg({ text: 'Contact saved!', type: 'success' })
-      setName(''); setPhone(''); setNotes('')
+      const record = { name: name.trim(), role, phone: phone||null, preferred_pay: pay, notes: notes||null }
+      if (editId) {
+        await update(editId, record)
+        setMsg({ text: 'Contact updated!', type: 'success' })
+      } else {
+        await insert(record)
+        setMsg({ text: 'Contact saved!', type: 'success' })
+      }
+      cancelEdit()
+      setTimeout(() => setMsg({ text: '', type: '' }), 3000)
     } catch (e) { setMsg({ text: 'Error: ' + e.message, type: 'error' })
     } finally { setSaving(false) }
+  }
+
+  async function handleDelete(id) {
+    if (confirmDelete !== id) { setConfirmDelete(id); return }
+    try {
+      await remove(id)
+      setConfirmDelete(null)
+      if (editId === id) cancelEdit()
+      setMsg({ text: 'Contact deleted.', type: 'success' })
+      setTimeout(() => setMsg({ text: '', type: '' }), 3000)
+    } catch (e) {
+      setMsg({ text: 'Error deleting: ' + e.message, type: 'error' })
+      setConfirmDelete(null)
+    }
   }
 
   return (
     <div style={{ paddingTop: 12 }}>
       <div style={{ background: 'linear-gradient(135deg,#0f1a2a,#1E293B)', borderRadius: 18, padding: 18, marginBottom: 12, border: '1px solid rgba(37,99,235,.2)' }}>
-        <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.5)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Contact book</div>
-        <div style={{ fontSize: 26, fontWeight: 700, color: '#fff', letterSpacing: -1, margin: '4px 0 2px' }}>{rows.length} contacts</div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>Buyers, sellers &amp; wholesalers</div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.5)', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+          {editId ? 'Edit contact' : 'Contact book'}
+        </div>
+        <div style={{ fontSize: 26, fontWeight: 700, color: '#fff', letterSpacing: -1, margin: '4px 0 2px' }}>
+          {editId ? name || 'Edit contact' : `${rows.length} contacts`}
+        </div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>
+          {editId ? 'Update the details below' : 'Buyers, sellers & wholesalers'}
+        </div>
       </div>
       <Toast message={msg.text} type={msg.type} />
       <Label top={false}>Name</Label>
@@ -334,19 +379,43 @@ export function ContactsPage() {
       <ChipGroup options={['Cash','Venmo','Zelle','Card']} value={pay} onChange={setPay} color="green" />
       <Label>Notes</Label>
       <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Buys holos in bulk, pays fast" />
-      <CtaButton onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save contact'}</CtaButton>
+      <CtaButton onClick={handleSave} disabled={saving}>
+        {saving ? 'Saving…' : editId ? 'Update contact' : 'Save contact'}
+      </CtaButton>
+      {editId && <GhostButton onClick={cancelEdit}>Cancel edit</GhostButton>}
+
       <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', margin: '20px 0 8px' }}>All contacts</div>
       {loading ? <div style={{ textAlign: 'center', color: C.text3, padding: 20 }}>Loading…</div>
         : rows.map((r,i) => (
-          <div key={r.id} style={{ background: C.surface, borderRadius: 14, padding: '12px 13px', marginBottom: 8, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: AVATAR_COLORS[i%AVATAR_COLORS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-              {r.name?.[0]?.toUpperCase() ?? '?'}
+          <div key={r.id} style={{ marginBottom: 8 }}>
+            <div
+              onClick={() => startEdit(r)}
+              style={{ background: C.surface, borderRadius: 14, padding: '12px 13px', border: `1px solid ${editId === r.id ? 'rgba(37,99,235,.3)' : C.border}`, display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer' }}
+            >
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: AVATAR_COLORS[i%AVATAR_COLORS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                {r.name?.[0]?.toUpperCase() ?? '?'}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.name}</div>
+                <div style={{ fontSize: 10, color: C.text3, marginTop: 2 }}>{r.preferred_pay||''}{r.notes ? ` · ${r.notes}` : ''}{r.phone ? ` · ${r.phone}` : ''}</div>
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: pillBg(r.role), color: pillColor(r.role) }}>{r.role}</span>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.name}</div>
-              <div style={{ fontSize: 10, color: C.text3, marginTop: 2 }}>{r.preferred_pay||''}{r.notes ? ` · ${r.notes}` : ''}{r.phone ? ` · ${r.phone}` : ''}</div>
-            </div>
-            <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: pillBg(r.role), color: pillColor(r.role) }}>{r.role}</span>
+            {isAdmin && editId === r.id && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDelete(r.id) }}
+                style={{
+                  width: '100%', padding: 10, borderRadius: 10, marginTop: 4,
+                  background: confirmDelete === r.id ? '#DC2626' : 'rgba(248,113,113,.08)',
+                  border: confirmDelete === r.id ? 'none' : '1px solid rgba(248,113,113,.15)',
+                  fontSize: 12, fontWeight: 600,
+                  color: confirmDelete === r.id ? '#fff' : C.red,
+                  cursor: 'pointer',
+                }}
+              >
+                {confirmDelete === r.id ? 'Tap again to confirm' : 'Delete contact'}
+              </button>
+            )}
           </div>
         ))}
       <div style={{ height: 16 }} />

@@ -332,8 +332,14 @@ create policy "Authenticated users can insert contacts"
   on public.contacts for insert
   with check (auth.uid() is not null and created_by = auth.uid());
 
+create policy "Creator can update their contacts"
+  on public.contacts for update using (created_by = auth.uid());
+
 create policy "Admins can update contacts"
   on public.contacts for update using (public.is_admin());
+
+create policy "Admins can delete contacts"
+  on public.contacts for delete using (public.is_admin());
 
 -- ── INVITES ───────────────────────────────────────────────────
 create policy "Admins can manage invites"
