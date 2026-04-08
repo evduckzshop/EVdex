@@ -145,7 +145,7 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
               onChange={e => f.set(e.target.value)}
               placeholder={f.pctField ? '—' : '0.00'}
               style={{
-                width: '100%', padding: '10px 8px', background: C.surface,
+                width: '100%', padding: '10px 8px',
                 border: `1px solid ${f.pctField ? 'rgba(37,99,235,.35)' : C.border2}`,
                 background: f.pctField ? 'rgba(37,99,235,.05)' : C.surface,
                 borderRadius: 9, fontSize: 14, color: C.text,
