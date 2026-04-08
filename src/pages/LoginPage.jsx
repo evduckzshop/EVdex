@@ -41,18 +41,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: 18,
-            background: 'linear-gradient(135deg, #2563EB, #7C3AED)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px', fontSize: 28, fontWeight: 800, color: '#fff',
-            letterSpacing: -1,
-          }}>
-            E
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#F1F5F9', letterSpacing: -0.5 }}>
-            EVdex
-          </div>
+          <img src="/evdex-logo.png" alt="EVdex" style={{ width: 180, height: 'auto', margin: '0 auto 8px', display: 'block' }} />
           <div style={{ fontSize: 14, color: '#475569', marginTop: 4 }}>
             Business operations platform
           </div>
