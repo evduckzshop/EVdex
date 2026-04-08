@@ -26,9 +26,13 @@ export function NavigationProvider({ children }) {
   const transitionType = useRef('fade')
   const prevPath = useRef(location.pathname)
   const manualNav = useRef(false) // true when navTo/navBack/navFade was used
+  const navigating = useRef(false) // guard against double-tap during animation
 
   // Auto-detect transition for raw navigate() calls
   useEffect(() => {
+    // Navigation completed — unlock
+    navigating.current = false
+
     if (manualNav.current) {
       // Was set explicitly by navTo/navBack/navFade — don't override
       manualNav.current = false
@@ -66,6 +70,10 @@ export function NavigationProvider({ children }) {
   }, [location.pathname])
 
   const navTo = useCallback((path, opts) => {
+    // Skip if already navigating or already on this page
+    if (navigating.current) return
+    if (path === location.pathname) return
+
     const fromPath = location.pathname
     const fromIdx = TAB_PATHS.indexOf(fromPath)
     const toIdx = TAB_PATHS.indexOf(path)
@@ -78,21 +86,27 @@ export function NavigationProvider({ children }) {
       transitionType.current = 'slide-left'
     }
 
+    navigating.current = true
     manualNav.current = true
     navigate(path, opts)
   }, [navigate, location.pathname])
 
   const navBack = useCallback(() => {
+    if (navigating.current) return
     transitionType.current = 'slide-right'
+    navigating.current = true
     manualNav.current = true
     navigate(-1)
   }, [navigate])
 
   const navFade = useCallback((path, opts) => {
+    if (navigating.current) return
+    if (path === location.pathname) return
     transitionType.current = 'fade'
+    navigating.current = true
     manualNav.current = true
     navigate(path, opts)
-  }, [navigate])
+  }, [navigate, location.pathname])
 
   return (
     <NavigationContext.Provider value={{ navTo, navBack, navFade, transitionType }}>
