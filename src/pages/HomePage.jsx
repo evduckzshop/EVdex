@@ -304,9 +304,10 @@ export default function HomePage() {
   const activeShow = shows.find(s => s.id === activeShowId)
   const liveNet = liveShow.sales - liveShow.buys - liveShow.fee
 
+  const showParam = activeShowId ? `?show=${activeShowId}` : ''
   const QUICK_ACTIONS = [
-    { label: 'Log sale',   path: '/sales',   bg: 'rgba(16,185,129,.12)',  color: '#10B981',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" stroke="#10B981" strokeWidth="1.5"/><path d="M9 5.5v7M6 9h6" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round"/></svg> },
-    { label: 'Log buy',    path: '/buys',    bg: 'rgba(248,113,113,.1)',   color: '#F87171',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M3 3h2.5l2.5 8.5h7L16 6H6" stroke="#F87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="8" cy="15" r="1" fill="#F87171"/><circle cx="14" cy="15" r="1" fill="#F87171"/></svg> },
+    { label: 'Log sale',   path: `/sales${showParam}`,   bg: 'rgba(16,185,129,.12)',  color: '#10B981',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" stroke="#10B981" strokeWidth="1.5"/><path d="M9 5.5v7M6 9h6" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+    { label: 'Log buy',    path: `/buys${showParam}`,    bg: 'rgba(248,113,113,.1)',   color: '#F87171',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M3 3h2.5l2.5 8.5h7L16 6H6" stroke="#F87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="8" cy="15" r="1" fill="#F87171"/><circle cx="14" cy="15" r="1" fill="#F87171"/></svg> },
     { label: 'Log show',   path: '/shows',   bg: 'rgba(245,158,11,.1)',   color: '#F59E0B',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><rect x="2" y="4" width="14" height="11" rx="2" stroke="#F59E0B" strokeWidth="1.5"/><path d="M2 7h14M6 2v4M12 2v4" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round"/></svg> },
     { label: 'Contacts',   path: '/contacts',bg: 'rgba(37,99,235,.12)',   color: '#60A5FA',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><circle cx="7" cy="6" r="3" stroke="#60A5FA" strokeWidth="1.5"/><path d="M2 15c0-2.8 2.2-5 5-5" stroke="#60A5FA" strokeWidth="1.5" strokeLinecap="round"/><path d="M14 11v5M11.5 13.5h5" stroke="#60A5FA" strokeWidth="1.5" strokeLinecap="round"/></svg> },
   ]

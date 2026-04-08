@@ -25,10 +25,14 @@ function useTable(tableName) {
     }
   }, [tableName])
 
+  // Tables without updated_at/updated_by columns
+  const noUpdatedAt = ['contacts']
+
   const insert = useCallback(async (record) => {
     if (!user) throw new Error('Not authenticated')
     const now = new Date().toISOString()
-    const row = { ...record, created_by: user.id, created_at: now, updated_at: now }
+    const row = { ...record, created_by: user.id, created_at: now }
+    if (!noUpdatedAt.includes(tableName)) row.updated_at = now
     const { data, error } = await supabase.from(tableName).insert(row).select().single()
     if (error) throw error
     await logActivity({
@@ -45,7 +49,8 @@ function useTable(tableName) {
   const update = useCallback(async (id, updates) => {
     if (!user) throw new Error('Not authenticated')
     const before = rows.find(r => r.id === id)
-    const patch = { ...updates, updated_by: user.id, updated_at: new Date().toISOString() }
+    const patch = { ...updates }
+    if (!noUpdatedAt.includes(tableName)) { patch.updated_by = user.id; patch.updated_at = new Date().toISOString() }
     const { data, error } = await supabase.from(tableName).update(patch).eq('id', id).select().single()
     if (error) throw error
     await logActivity({

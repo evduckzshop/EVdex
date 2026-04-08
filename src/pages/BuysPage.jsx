@@ -27,7 +27,7 @@ export default function BuysPage() {
   const [source, setSource] = useState('')
   const [payment, setPayment] = useState('Cash')
   const [notes, setNotes] = useState('')
-  const [showId, setShowId] = useState('')
+  const [showId, setShowId] = useState(searchParams.get('show') || '')
   const [photoFile, setPhotoFile] = useState(null)
   const [photoName, setPhotoName] = useState('')
   const [saving, setSaving] = useState(false)
