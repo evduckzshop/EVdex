@@ -130,7 +130,7 @@ export default function ContactsListPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.name}</div>
                   <div style={{ fontSize: 10, color: C.text3, marginTop: 2 }}>
-                    {r.preferred_pay || ''}{r.phone ? ` · ${r.phone}` : ''}{txCount > 0 ? ` · ${txCount} txn` : ''}
+                    {r.preferred_pay || ''}{r.phone ? ` · ${r.phone}` : ''}{r.instagram ? ` · @${r.instagram.replace(/^@/, '')}` : ''}{txCount > 0 ? ` · ${txCount} txn` : ''}
                   </div>
                 </div>
                 <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: pillBg(r.role), color: pillColor(r.role) }}>{r.role}</span>
@@ -185,7 +185,7 @@ export function ContactDetailPage() {
   ].sort((a, b) => new Date(b._date) - new Date(a._date))
   const totalSold = contactSales.reduce((s, r) => s + Number(r.sale_price), 0)
   const totalBought = contactBuys.reduce((s, r) => s + Number(r.amount_paid), 0)
-  const avatarColor = AVATAR_COLORS[(contact.name || '').charCodeAt(0) % AVATAR_COLORS.length] || '#1E40AF'
+  const avatarColor = AVATAR_COLORS[((contact.name || 'A').charCodeAt(0)) % AVATAR_COLORS.length]
 
   async function handleDelete() {
     if (!confirmDelete) { setConfirmDelete(true); return }
@@ -219,12 +219,18 @@ export function ContactDetailPage() {
       </div>
 
       {/* Contact info */}
-      {(contact.phone || contact.notes) && (
+      {(contact.phone || contact.instagram || contact.notes) && (
         <div style={{ background: C.surface, borderRadius: 14, padding: '12px 14px', marginBottom: 12, border: `1px solid ${C.border}` }}>
           {contact.phone && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: contact.notes ? `1px solid ${C.border}` : 'none' }}>
-              <div style={{ fontSize: 13, color: C.text3 }}>Phone / handle</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: (contact.instagram || contact.notes) ? `1px solid ${C.border}` : 'none' }}>
+              <div style={{ fontSize: 13, color: C.text3 }}>Phone number</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{contact.phone}</div>
+            </div>
+          )}
+          {contact.instagram && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: contact.notes ? `1px solid ${C.border}` : 'none' }}>
+              <div style={{ fontSize: 13, color: C.text3 }}>Instagram</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#E1306C' }}>@{contact.instagram.replace(/^@/, '')}</div>
             </div>
           )}
           {contact.notes && (
@@ -321,6 +327,7 @@ export function ContactEditPage() {
   const [name, setName] = useState('')
   const [role, setRole] = useState('Seller')
   const [phone, setPhone] = useState('')
+  const [instagram, setInstagram] = useState('')
   const [pay, setPay] = useState('Cash')
   const [notes, setNotes] = useState('')
 
@@ -329,6 +336,7 @@ export function ContactEditPage() {
       setName(contact.name || '')
       setRole(contact.role || 'Seller')
       setPhone(contact.phone || '')
+      setInstagram(contact.instagram || '')
       setPay(contact.preferred_pay || 'Cash')
       setNotes(contact.notes || '')
     }
@@ -341,7 +349,7 @@ export function ContactEditPage() {
     if (!name.trim()) { setMsg({ text: 'Name is required.', type: 'error' }); return }
     setSaving(true)
     try {
-      await update(id, { name: name.trim(), role, phone: phone || null, preferred_pay: pay, notes: notes || null })
+      await update(id, { name: name.trim(), role, phone: phone || null, instagram: instagram || null, preferred_pay: pay, notes: notes || null })
       setMsg({ text: 'Contact updated!', type: 'success' })
       setTimeout(() => navigate(`/contacts/${id}`, { replace: true }), 600)
     } catch (e) { setMsg({ text: 'Error: ' + e.message, type: 'error' }) }
@@ -359,10 +367,12 @@ export function ContactEditPage() {
 
       <Label top={false}>Name</Label>
       <Input value={name} onChange={e => setName(e.target.value)} placeholder="Name or business" />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div><Label>Phone / handle</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="@venmo or number" /></div>
-        <div><Label>Role</Label><Select value={role} onChange={e => setRole(e.target.value)}>{['Seller','Buyer','Both','Wholesaler'].map(r => <option key={r}>{r}</option>)}</Select></div>
-      </div>
+      <Label>Role</Label>
+      <Select value={role} onChange={e => setRole(e.target.value)}>{['Seller','Buyer','Both','Wholesaler'].map(r => <option key={r}>{r}</option>)}</Select>
+      <Label>Phone number</Label>
+      <Input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 123-4567" />
+      <Label>Instagram</Label>
+      <Input value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="@username" />
       <Label>Preferred payment</Label>
       <ChipGroup options={['Cash','Venmo','Zelle','Card']} value={pay} onChange={setPay} color="green" />
       <Label>Notes</Label>
@@ -385,6 +395,7 @@ export function ContactAddPage() {
   const [name, setName] = useState('')
   const [role, setRole] = useState('Seller')
   const [phone, setPhone] = useState('')
+  const [instagram, setInstagram] = useState('')
   const [pay, setPay] = useState('Cash')
   const [notes, setNotes] = useState('')
 
@@ -392,7 +403,7 @@ export function ContactAddPage() {
     if (!name.trim()) { setMsg({ text: 'Please enter a name.', type: 'error' }); return }
     setSaving(true)
     try {
-      await insert({ name: name.trim(), role, phone: phone || null, preferred_pay: pay, notes: notes || null })
+      await insert({ name: name.trim(), role, phone: phone || null, instagram: instagram || null, preferred_pay: pay, notes: notes || null })
       setMsg({ text: 'Contact saved!', type: 'success' })
       setTimeout(() => navigate('/contacts', { replace: true }), 600)
     } catch (e) { setMsg({ text: 'Error: ' + e.message, type: 'error' }) }
@@ -410,10 +421,12 @@ export function ContactAddPage() {
 
       <Label top={false}>Name</Label>
       <Input value={name} onChange={e => setName(e.target.value)} placeholder="Name or business" />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div><Label>Phone / handle</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="@venmo or number" /></div>
-        <div><Label>Role</Label><Select value={role} onChange={e => setRole(e.target.value)}>{['Seller','Buyer','Both','Wholesaler'].map(r => <option key={r}>{r}</option>)}</Select></div>
-      </div>
+      <Label>Role</Label>
+      <Select value={role} onChange={e => setRole(e.target.value)}>{['Seller','Buyer','Both','Wholesaler'].map(r => <option key={r}>{r}</option>)}</Select>
+      <Label>Phone number</Label>
+      <Input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 123-4567" />
+      <Label>Instagram</Label>
+      <Input value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="@username" />
       <Label>Preferred payment</Label>
       <ChipGroup options={['Cash','Venmo','Zelle','Card']} value={pay} onChange={setPay} color="green" />
       <Label>Notes</Label>

@@ -354,6 +354,9 @@ function ShowEditView({ show, isAdmin, onBack, onUpdate, onDelete, msg, setMsg }
           supabase.from('buys').select('amount_paid').eq('show_id', show.id),
           supabase.from('expenses').select('amount').eq('show_id', show.id),
         ])
+        if (s.error) throw s.error
+        if (b.error) throw b.error
+        if (e.error) throw e.error
         const sales = (s.data || []).reduce((sum, r) => sum + Number(r.sale_price), 0)
         const buys = (b.data || []).reduce((sum, r) => sum + Number(r.amount_paid), 0)
         const expenses = (e.data || []).reduce((sum, r) => sum + Number(r.amount), 0)

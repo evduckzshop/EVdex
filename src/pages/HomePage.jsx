@@ -248,7 +248,6 @@ export default function HomePage() {
 
   async function loadData() {
     setLoading(true)
-    console.log('[EVdex Home] loadData started')
     try {
       const todayStart = new Date(); todayStart.setHours(0,0,0,0)
       const ts = todayStart.toISOString()
@@ -260,17 +259,10 @@ export default function HomePage() {
         supabase.from('shows').select('*').in('status', ['upcoming','in_progress']).order('event_date', { ascending: true }),
       ])
 
-      if (salesRes.error) console.error('[EVdex Home] sales query error:', salesRes.error)
-      if (buysRes.error) console.error('[EVdex Home] buys query error:', buysRes.error)
-      if (expRes.error) console.error('[EVdex Home] expenses query error:', expRes.error)
-      if (showsRes.error) console.error('[EVdex Home] shows query error:', showsRes.error)
-
       const sales = salesRes.data || []
       const buys = buysRes.data || []
       const expenses = expRes.data || []
       const showData = showsRes.data || []
-
-      console.log('[EVdex Home] loaded:', { sales: sales.length, buys: buys.length, expenses: expenses.length, shows: showData.length })
 
       const todaySales = sales.reduce((s, r) => s + Number(r.sale_price), 0)
       const todayBuys = buys.reduce((s, r) => s + Number(r.amount_paid), 0)
@@ -288,7 +280,7 @@ export default function HomePage() {
 
       setActivity(merged)
     } catch (e) {
-      console.error('[EVdex Home] loadData FAILED:', e)
+      console.error('Failed to load dashboard data:', e)
     } finally {
       setLoading(false)
     }

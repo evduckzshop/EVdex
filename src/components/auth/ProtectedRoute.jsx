@@ -26,8 +26,6 @@ export function RequireAuth({ children }) {
   const { session, profile, loading } = useAuth()
   const location = useLocation()
 
-  console.log('[EVdex Route] RequireAuth:', { loading, hasSession: !!session, profile: profile?.role || 'null', path: location.pathname })
-
   if (loading) return <LoadingScreen />
   if (!session) return <Navigate to="/login" state={{ from: location }} replace />
   if (profile && !profile.is_active) return <Navigate to="/deactivated" replace />

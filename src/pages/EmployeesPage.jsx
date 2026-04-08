@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getAllProfiles, inviteEmployee, setUserActive, supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -17,10 +17,10 @@ export default function EmployeesPage() {
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [selected, setSelected] = useState(null)
 
-  const [refreshTimer, setRefreshTimer] = useState(null)
+  const refreshTimerRef = useRef(null)
   useEffect(() => {
     loadProfiles()
-    return () => { if (refreshTimer) clearTimeout(refreshTimer) }
+    return () => { if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current) }
   }, [])
 
   async function loadProfiles() {
@@ -46,7 +46,7 @@ export default function EmployeesPage() {
       await inviteEmployee({ email: inviteEmail.trim().toLowerCase(), fullName: inviteName.trim(), role: inviteRole })
       setMsg({ text: `Invite sent to ${inviteEmail}! They'll receive an email to set their password.`, type: 'success' })
       setInviteEmail(''); setInviteName(''); setInviteRole('employee')
-      setRefreshTimer(setTimeout(loadProfiles, 1500))
+      refreshTimerRef.current = setTimeout(loadProfiles, 1500)
     } catch (e) {
       setMsg({ text: 'Invite failed: ' + e.message, type: 'error' })
     } finally {
