@@ -42,6 +42,7 @@ export function RequireAdmin({ children }) {
 
   if (loading) return <LoadingScreen />
   if (!session) return <Navigate to="/login" state={{ from: location }} replace />
+  if (profile && !profile.is_active) return <Navigate to="/deactivated" replace />
   if (!isAdmin) return <Navigate to="/access-denied" replace />
 
   return children
@@ -95,7 +96,7 @@ export function DeactivatedPage() {
       <div style={{ fontSize: 14, color: '#475569', marginBottom: 28, maxWidth: 280 }}>
         Your account has been deactivated. Please contact your admin.
       </div>
-      <button onClick={() => supabase.auth.signOut()} style={{
+      <button onClick={() => supabase.auth.signOut().then(() => window.location.href = '/login').catch(() => window.location.href = '/login')} style={{
         padding: '11px 24px', background: '#374151', borderRadius: 12,
         color: '#fff', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer',
       }}>

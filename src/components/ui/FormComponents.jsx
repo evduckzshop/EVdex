@@ -274,7 +274,7 @@ export function AutocompleteInput({ contacts, value, onSelect, placeholder }) {
   const [selected, setSelected] = useState(null)
 
   const filtered = input.length > 0
-    ? contacts.filter(c => c.name.toLowerCase().includes(input.toLowerCase()))
+    ? contacts.filter(c => (c.name || '').toLowerCase().includes(input.toLowerCase()))
     : contacts
 
   function pick(c) {

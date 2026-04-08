@@ -25,43 +25,46 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     log('AuthProvider mounted')
+    let initialDone = false
 
-    // getSession() refreshes the token if expired before returning
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) logErr('getSession error:', error.message)
-      log('getSession result:', session ? `user=${session.user?.id}` : 'no session')
+    // onAuthStateChange handles ALL events including INITIAL_SESSION
+    // IMPORTANT: callback must NOT be async — awaiting blocks the Supabase client queue
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      log('onAuthStateChange:', event)
+      setSession(newSession)
 
-      setSession(session)
-      if (session?.user) {
-        loadProfile(session.user.id).finally(() => {
-          log('Initial loadProfile done, setting loading=false')
-          setLoading(false)
+      if (newSession?.user) {
+        // Fire loadProfile WITHOUT await — don't block the client
+        loadProfile(newSession.user.id).then(() => {
+          if (!initialDone) {
+            initialDone = true
+            log('Initial profile loaded, setting loading=false')
+            setLoading(false)
+          }
         })
       } else {
-        log('No session, setting loading=false')
+        setProfile(null)
+        if (!initialDone) {
+          initialDone = true
+          log('No session, setting loading=false')
+          setLoading(false)
+        }
+      }
+    })
+
+    // Safety net: if nothing resolves in 10s, force loading=false
+    const safety = setTimeout(() => {
+      if (!initialDone) {
+        logErr('Safety timeout — forcing loading=false after 10s')
+        initialDone = true
         setLoading(false)
       }
-    }).catch((e) => {
-      logErr('getSession CRASHED:', e?.message || e)
-      setLoading(false)
-    })
+    }, 10000)
 
-    // Listen for subsequent auth changes (sign in, sign out, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      log('onAuthStateChange:', event)
-
-      // Skip INITIAL_SESSION — we handle it above with getSession()
-      if (event === 'INITIAL_SESSION') return
-
-      setSession(newSession)
-      if (newSession?.user) {
-        await loadProfile(newSession.user.id)
-      } else {
-        setProfile(null)
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(safety)
+    }
   }, [loadProfile])
 
   const refreshProfile = useCallback(() => {

@@ -17,7 +17,11 @@ export default function EmployeesPage() {
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [selected, setSelected] = useState(null)
 
-  useEffect(() => { loadProfiles() }, [])
+  const [refreshTimer, setRefreshTimer] = useState(null)
+  useEffect(() => {
+    loadProfiles()
+    return () => { if (refreshTimer) clearTimeout(refreshTimer) }
+  }, [])
 
   async function loadProfiles() {
     setLoading(true)
@@ -42,7 +46,7 @@ export default function EmployeesPage() {
       await inviteEmployee({ email: inviteEmail.trim().toLowerCase(), fullName: inviteName.trim(), role: inviteRole })
       setMsg({ text: `Invite sent to ${inviteEmail}! They'll receive an email to set their password.`, type: 'success' })
       setInviteEmail(''); setInviteName(''); setInviteRole('employee')
-      setTimeout(loadProfiles, 1500)
+      setRefreshTimer(setTimeout(loadProfiles, 1500))
     } catch (e) {
       setMsg({ text: 'Invite failed: ' + e.message, type: 'error' })
     } finally {

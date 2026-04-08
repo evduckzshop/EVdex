@@ -171,7 +171,7 @@ export default function ProfilePage() {
             <div style={{ fontSize: 13, color: C.text2 }}>Show mode PIN</div>
             <div style={{ fontSize: 10, color: C.text3, marginTop: 2 }}>Quick login at card shows</div>
           </div>
-          <button onClick={() => navigate('/set-pin')} style={{ fontSize: 12, color: '#3B82F6', background: 'none', border: 'none', cursor: 'pointer' }}>Set PIN</button>
+          <span style={{ fontSize: 12, color: C.text3 }}>Coming soon</span>
         </div>
       </div>
 

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { signIn } from '../lib/supabase'
-import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -10,8 +9,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
-  const { isAdmin } = useAuth()
-
   const from = location.state?.from?.pathname || '/'
 
   async function handleSubmit(e) {

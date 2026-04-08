@@ -57,6 +57,7 @@ function ActivityDetail({ item, onClose, isAdmin, onDelete }) {
   if (!item) return null
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const isSale = item.type === 'sale'
   const isBuy = item.type === 'buy'
   const isExpense = item.type === 'expense'
@@ -115,6 +116,7 @@ function ActivityDetail({ item, onClose, isAdmin, onDelete }) {
       onClose()
     } catch (e) {
       console.error('Delete failed:', e)
+      setDeleteError('Delete failed: ' + (e.message || 'Unknown error'))
       setDeleting(false)
       setConfirmDelete(false)
     }
@@ -176,6 +178,9 @@ function ActivityDetail({ item, onClose, isAdmin, onDelete }) {
         </div>
 
         {/* Admin delete */}
+        {deleteError && (
+          <div style={{ background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.2)', borderRadius: 10, padding: '10px 14px', marginTop: 12, fontSize: 13, color: C.red }}>{deleteError}</div>
+        )}
         {isAdmin && (isSale || isBuy) && (
           <button
             onClick={handleDelete}
