@@ -192,14 +192,10 @@ export default function AppLayout({ children }) {
         borderBottom: `1px solid ${C.border}`,
       }}>
         <div>
-          {pageTitle === 'EVdex' ? (
-            <img src="/evdex-logo.png" alt="EVdex" style={{ height: 24, width: 'auto', display: 'block' }} />
-          ) : (
-            <div style={{ fontSize: 20, fontWeight: 700, color: C.text, letterSpacing: -.4 }}>
-              {pageTitle}
-            </div>
-          )}
-          <div style={{ fontSize: 11, color: C.text3, marginTop: 3 }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: C.text, letterSpacing: -.4 }}>
+            {pageTitle}
+          </div>
+          <div style={{ fontSize: 11, color: C.text3, marginTop: 1 }}>
             {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
             {' · '}
             {profile?.full_name}

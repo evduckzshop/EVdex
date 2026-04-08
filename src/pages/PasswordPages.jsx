@@ -50,7 +50,8 @@ export function ForgotPasswordPage() {
     <div style={pageStyle}>
       <div style={{ width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <img src="/evdex-logo.png" alt="EVdex" style={{ width: 150, height: 'auto', margin: '0 auto', display: 'block' }} />
+          <div style={logoStyle}>E</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#F1F5F9', letterSpacing: -0.5 }}>EVdex</div>
         </div>
         <div style={cardStyle}>
           {sent ? (
@@ -123,7 +124,8 @@ export function ResetPasswordPage() {
     <div style={pageStyle}>
       <div style={{ width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <img src="/evdex-logo.png" alt="EVdex" style={{ width: 150, height: 'auto', margin: '0 auto', display: 'block' }} />
+          <div style={logoStyle}>E</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#F1F5F9', letterSpacing: -0.5 }}>EVdex</div>
         </div>
         <div style={cardStyle}>
           {done ? (
