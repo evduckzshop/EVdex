@@ -306,12 +306,32 @@ export default function HomePage() {
     }
   }
 
+  async function loadShowStats(id) {
+    const show = shows.find(s => s.id === id)
+    if (!show) return
+    try {
+      const [s, b] = await Promise.all([
+        supabase.from('sales').select('sale_price').eq('show_id', id),
+        supabase.from('buys').select('amount_paid').eq('show_id', id),
+      ])
+      const salesTotal = (s.data || []).reduce((sum, r) => sum + Number(r.sale_price), 0)
+      const buysTotal = (b.data || []).reduce((sum, r) => sum + Number(r.amount_paid), 0)
+      setLiveShow({ sales: salesTotal, buys: buysTotal, fee: Number(show.table_fee) || 0 })
+    } catch (e) {
+      console.error('Failed to load show stats:', e)
+    }
+  }
+
   function selectShow(id) {
     if (activeShowId === id) { setActiveShowId(null); return }
     setActiveShowId(id)
-    const show = shows.find(s => s.id === id)
-    if (show) setLiveShow({ sales: 0, buys: 0, fee: Number(show.table_fee) || 0 })
+    loadShowStats(id)
   }
+
+  // Refresh show stats when page loads (e.g. coming back from logging a sale)
+  useEffect(() => {
+    if (activeShowId && shows.length > 0) loadShowStats(activeShowId)
+  }, [activeShowId, shows])
 
   const activeShow = shows.find(s => s.id === activeShowId)
   const liveNet = liveShow.sales - liveShow.buys - liveShow.fee
