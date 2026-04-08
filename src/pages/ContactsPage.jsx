@@ -14,10 +14,9 @@ const SORT_OPTIONS = [
 ]
 const LAYOUT_KEY = 'evdex_contacts_layout'
 
-function getTxData(contactName, sales, buys) {
-  const cn = (contactName || '').toLowerCase()
-  const cSales = sales.filter(s => (s.buyer || '').toLowerCase() === cn)
-  const cBuys = buys.filter(b => (b.source || '').toLowerCase() === cn)
+function getTxData(contactId, contactName, sales, buys) {
+  const cSales = sales.filter(s => s.buyer_contact_id === contactId)
+  const cBuys = buys.filter(b => b.source_contact_id === contactId)
   return { cSales, cBuys, count: cSales.length + cBuys.length }
 }
 
@@ -48,7 +47,7 @@ export default function ContactsListPage() {
 
   if (sort === 'alpha') filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
   else if (sort === 'recent') filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  else if (sort === 'transactions') filtered.sort((a, b) => getTxData(b.name, sales, buys).count - getTxData(a.name, sales, buys).count)
+  else if (sort === 'transactions') filtered.sort((a, b) => getTxData(b.id, b.name, sales, buys).count - getTxData(a.id, a.name, sales, buys).count)
 
   return (
     <div style={{ paddingTop: 12 }}>
@@ -121,7 +120,7 @@ export default function ContactsListPage() {
         : filtered.length === 0 ? <div style={{ textAlign: 'center', color: C.text3, padding: 20, fontSize: 13 }}>No contacts found.</div>
         : layout === 'card' ? (
           filtered.map((r, i) => {
-            const txCount = getTxData(r.name, sales, buys).count
+            const txCount = getTxData(r.id, r.name, sales, buys).count
             return (
               <div key={r.id} onClick={() => navigate(`/contacts/${r.id}`)} style={{ background: C.surface, borderRadius: 14, padding: '12px 13px', marginBottom: 8, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer' }}>
                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: AVATAR_COLORS[i % AVATAR_COLORS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
@@ -140,7 +139,7 @@ export default function ContactsListPage() {
         ) : (
           <div style={{ background: C.surface, borderRadius: 14, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
             {filtered.map((r, i) => {
-              const txCount = getTxData(r.name, sales, buys).count
+              const txCount = getTxData(r.id, r.name, sales, buys).count
               return (
                 <div key={r.id} onClick={() => navigate(`/contacts/${r.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 13px', cursor: 'pointer', borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : 'none' }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: pillColor(r.role), flexShrink: 0 }} />
@@ -176,9 +175,8 @@ export function ContactDetailPage() {
   if (!contact && !rows.length) return <div style={{ textAlign: 'center', color: C.text3, padding: 40 }}>Loading…</div>
   if (!contact) return <div style={{ textAlign: 'center', color: C.text3, padding: 40 }}>Contact not found.</div>
 
-  const cn = (contact.name || '').toLowerCase()
-  const contactSales = sales.filter(s => (s.buyer || '').toLowerCase() === cn)
-  const contactBuys = buys.filter(b => (b.source || '').toLowerCase() === cn)
+  const contactSales = sales.filter(s => s.buyer_contact_id === id)
+  const contactBuys = buys.filter(b => b.source_contact_id === id)
   const history = [
     ...contactSales.map(s => ({ ...s, _type: 'sale', _amount: Number(s.sale_price), _date: s.created_at })),
     ...contactBuys.map(b => ({ ...b, _type: 'buy', _amount: Number(b.amount_paid), _date: b.created_at })),

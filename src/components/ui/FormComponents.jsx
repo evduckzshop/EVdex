@@ -377,23 +377,25 @@ export function RecordCard({ item, amtColor, amt, meta }) {
   )
 }
 
-export function AutocompleteInput({ contacts, value, onSelect, placeholder }) {
+export function AutocompleteInput({ contacts, value, contactId, onSelect, placeholder }) {
   const [input, setInput] = useState(value || '')
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState(() => {
+    if (contactId && contacts.length) return contacts.find(c => c.id === contactId) || null
     if (value && contacts.length) return contacts.find(c => c.name === value) || null
     return null
   })
 
-  // Sync when value changes externally (e.g. edit mode)
+  // Sync when value/contactId changes externally (e.g. edit mode)
   useEffect(() => {
-    if (value && !selected) {
+    if (contactId && !selected) {
+      const match = contacts.find(c => c.id === contactId)
+      if (match) { setSelected(match); setInput(match.name) }
+    } else if (value && !selected) {
       setInput(value)
-      const match = contacts.find(c => c.name === value)
-      if (match) setSelected(match)
     }
-    if (!value && !selected) setInput('')
-  }, [value, contacts])
+    if (!value && !contactId && !selected) setInput('')
+  }, [value, contactId, contacts])
 
   const filtered = input.length > 0
     ? contacts.filter(c => (c.name || '').toLowerCase().includes(input.toLowerCase()) || (c.nickname || '').toLowerCase().includes(input.toLowerCase()))
@@ -401,18 +403,19 @@ export function AutocompleteInput({ contacts, value, onSelect, placeholder }) {
 
   function pick(c) {
     setSelected(c)
-    onSelect(c.name)
+    onSelect(c.name, c.id)
     setOpen(false)
   }
   function clear() {
     setSelected(null)
     setInput('')
-    onSelect('')
+    onSelect('', null)
   }
   function handleInputChange(val) {
     setInput(val)
     setOpen(true)
-    onSelect(val)
+    // Free text — no contact ID
+    onSelect(val, null)
   }
 
   if (selected) {

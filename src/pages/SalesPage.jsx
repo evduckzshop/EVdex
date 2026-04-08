@@ -25,6 +25,7 @@ export default function SalesPage() {
   const [pct, setPct] = useState('')
   const [cost, setCost] = useState('')
   const [buyer, setBuyer] = useState('')
+  const [buyerContactId, setBuyerContactId] = useState(null)
   const [payment, setPayment] = useState('Cash')
   const [showId, setShowId] = useState(searchParams.get('show') || '')
   const [photoFile, setPhotoFile] = useState(null)
@@ -44,6 +45,7 @@ export default function SalesPage() {
       setPct(editRecord.pct_of_market ? String(editRecord.pct_of_market) : '100')
       setCost(editRecord.cost_basis ? String(editRecord.cost_basis) : '')
       setBuyer(editRecord.buyer || '')
+      setBuyerContactId(editRecord.buyer_contact_id || null)
       setPayment(editRecord.payment || 'Cash')
       setShowId(editRecord.show_id || '')
       setPhotoName(editRecord.photo_url ? 'Existing photo' : '')
@@ -77,6 +79,7 @@ export default function SalesPage() {
         pct_of_market: parseFloat(pct) || null,
         cost_basis: parseFloat(cost) || null,
         buyer: buyer || null,
+        buyer_contact_id: buyerContactId || null,
         payment,
         show_id: showId || null,
         photo_url,
@@ -102,7 +105,7 @@ export default function SalesPage() {
 
   function resetForm() {
     setSaleType('Single card'); setDesc(''); setMarket(''); setPrice(''); setPct('')
-    setCost(''); setBuyer(''); setPayment('Cash'); setShowId(''); setPhotoFile(null); setPhotoName('')
+    setCost(''); setBuyer(''); setBuyerContactId(null); setPayment('Cash'); setShowId(''); setPhotoFile(null); setPhotoName('')
   }
 
   return (
@@ -138,7 +141,7 @@ export default function SalesPage() {
       <Input type="number" value={cost} onChange={e => setCost(e.target.value)} placeholder="0.00" />
 
       <Label>Sold to</Label>
-      <AutocompleteInput contacts={contacts} value={buyer} onSelect={setBuyer} placeholder="Buyer name or search contacts…" />
+      <AutocompleteInput contacts={contacts} value={buyer} contactId={buyerContactId} onSelect={(name, cid) => { setBuyer(name); setBuyerContactId(cid) }} placeholder="Buyer name or search contacts…" />
 
       <Label>Show (optional)</Label>
       <Select value={showId} onChange={e => setShowId(e.target.value)}>

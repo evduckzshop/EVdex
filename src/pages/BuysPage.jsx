@@ -25,6 +25,7 @@ export default function BuysPage() {
   const [paid, setPaid] = useState('')
   const [pct, setPct] = useState('')
   const [source, setSource] = useState('')
+  const [sourceContactId, setSourceContactId] = useState(null)
   const [payment, setPayment] = useState('Cash')
   const [notes, setNotes] = useState('')
   const [showId, setShowId] = useState(searchParams.get('show') || '')
@@ -49,6 +50,7 @@ export default function BuysPage() {
       setPaid(editRecord.amount_paid ? String(editRecord.amount_paid) : '')
       setPct(editRecord.pct_of_market ? String(editRecord.pct_of_market) : '100')
       setSource(editRecord.source || '')
+      setSourceContactId(editRecord.source_contact_id || null)
       setPayment(editRecord.payment || 'Cash')
       setNotes(editRecord.notes || '')
       setShowId(editRecord.show_id || '')
@@ -84,6 +86,7 @@ export default function BuysPage() {
         amount_paid: parseFloat(paid),
         pct_of_market: parseFloat(pct) || null,
         source: source || null,
+        source_contact_id: sourceContactId || null,
         payment,
         notes: notes || null,
         show_id: showId || null,
@@ -110,7 +113,7 @@ export default function BuysPage() {
 
   function resetForm() {
     setBuyType('Singles'); setDesc(''); setQty(''); setCondition('NM')
-    setMarket(''); setPaid(''); setPct(''); setSource(''); setPayment('Cash')
+    setMarket(''); setPaid(''); setPct(''); setSource(''); setSourceContactId(null); setPayment('Cash')
     setNotes(''); setShowId(''); setPhotoFile(null); setPhotoName('')
   }
 
@@ -184,7 +187,7 @@ export default function BuysPage() {
       />
 
       <Label>Sourced from</Label>
-      <AutocompleteInput contacts={contacts} value={source} onSelect={setSource} placeholder="Seller name or search contacts…" />
+      <AutocompleteInput contacts={contacts} value={source} contactId={sourceContactId} onSelect={(name, cid) => { setSource(name); setSourceContactId(cid) }} placeholder="Seller name or search contacts…" />
 
       <Label>Show (optional)</Label>
       <Select value={showId} onChange={e => setShowId(e.target.value)}>
