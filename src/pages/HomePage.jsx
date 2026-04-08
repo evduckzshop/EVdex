@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase, logActivity } from '../lib/supabase'
+import PullToRefresh from '../components/ui/PullToRefresh'
 
 const C = {
   surface: '#1E293B', surface2: '#162032', surface3: '#0F172A',
@@ -53,7 +54,7 @@ function ActivityCard({ item, onTap }) {
   )
 }
 
-function ActivityDetail({ item, onClose, isAdmin, onDelete }) {
+function ActivityDetail({ item, onClose, isAdmin, onDelete, navigate }) {
   if (!item) return null
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -177,6 +178,20 @@ function ActivityDetail({ item, onClose, isAdmin, onDelete }) {
           ))}
         </div>
 
+        {/* Edit button */}
+        {(isSale || isBuy) && (
+          <button
+            onClick={() => { onClose(); navigate(isSale ? `/sales?edit=${item.id}` : `/buys?edit=${item.id}`) }}
+            style={{
+              width: '100%', padding: 13, borderRadius: 12, marginTop: 14,
+              background: 'rgba(37,99,235,.1)', border: '1px solid rgba(37,99,235,.2)',
+              fontSize: 14, fontWeight: 600, color: '#3B82F6', cursor: 'pointer',
+            }}
+          >
+            Edit this record
+          </button>
+        )}
+
         {/* Admin delete */}
         {deleteError && (
           <div style={{ background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.2)', borderRadius: 10, padding: '10px 14px', marginTop: 12, fontSize: 13, color: C.red }}>{deleteError}</div>
@@ -281,6 +296,7 @@ export default function HomePage() {
   ]
 
   return (
+    <PullToRefresh onRefresh={loadData}>
     <div style={{ paddingTop: 12 }}>
 
       {/* Hero */}
@@ -392,10 +408,12 @@ export default function HomePage() {
           onClose={() => setSelectedItem(null)}
           isAdmin={isAdmin}
           onDelete={(id) => setActivity(prev => prev.filter(a => a.id !== id))}
+          navigate={navigate}
         />
       )}
 
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
     </div>
+    </PullToRefresh>
   )
 }

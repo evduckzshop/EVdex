@@ -121,6 +121,21 @@ export async function uploadAvatar(userId, file) {
   return url
 }
 
+// ── Photo upload helper ───────────────────────────────────────
+
+export async function uploadPhoto(userId, file) {
+  const ext = file.name.split('.').pop()
+  const path = `${userId}/${Date.now()}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('photos')
+    .upload(path, file, { upsert: false })
+  if (uploadError) throw uploadError
+
+  const { data } = supabase.storage.from('photos').getPublicUrl(path)
+  return data.publicUrl
+}
+
 // ── Invite helper (calls Edge Function) ───────────────────────
 
 export async function inviteEmployee({ email, fullName, role = 'employee' }) {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useShows } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { C, Label, Input, Select, CtaButton, GhostButton, Toast } from '../components/ui/FormComponents'
 
 const statusColor = s => s === 'completed' ? C.green : s === 'in_progress' ? C.amber : '#7F77DD'
@@ -342,6 +343,28 @@ function ShowEditView({ show, isAdmin, onBack, onUpdate, onDelete, msg, setMsg }
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [pl, setPl] = useState(null)
+
+  // Load show P&L
+  useEffect(() => {
+    async function loadPL() {
+      try {
+        const [s, b, e] = await Promise.all([
+          supabase.from('sales').select('sale_price').eq('show_id', show.id),
+          supabase.from('buys').select('amount_paid').eq('show_id', show.id),
+          supabase.from('expenses').select('amount').eq('show_id', show.id),
+        ])
+        const sales = (s.data || []).reduce((sum, r) => sum + Number(r.sale_price), 0)
+        const buys = (b.data || []).reduce((sum, r) => sum + Number(r.amount_paid), 0)
+        const expenses = (e.data || []).reduce((sum, r) => sum + Number(r.amount), 0)
+        const tableFee = Number(show.table_fee) || 0
+        setPl({ sales, buys, expenses, tableFee, salesCount: s.data?.length || 0, buysCount: b.data?.length || 0 })
+      } catch (err) {
+        console.error('Failed to load show P&L:', err)
+      }
+    }
+    loadPL()
+  }, [show.id])
 
   async function handleSave() {
     if (!name.trim()) { setMsg({ text: 'Show name is required.', type: 'error' }); return }
@@ -388,6 +411,31 @@ function ShowEditView({ show, isAdmin, onBack, onUpdate, onDelete, msg, setMsg }
           Created {new Date(show.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </div>
       </div>
+
+      {/* Show P&L */}
+      {pl && (pl.salesCount > 0 || pl.buysCount > 0) && (
+        <div style={{ background: C.surface, borderRadius: 14, padding: 14, marginBottom: 12, border: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 10 }}>Show financials</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 10 }}>
+            {[
+              { l: 'Sales', v: `$${pl.sales.toLocaleString()}`, c: C.green, sub: `${pl.salesCount} txn` },
+              { l: 'Buys', v: `$${pl.buys.toLocaleString()}`, c: C.red, sub: `${pl.buysCount} txn` },
+              { l: 'Net', v: `$${(pl.sales - pl.buys - pl.expenses - pl.tableFee).toLocaleString()}`, c: (pl.sales - pl.buys - pl.expenses - pl.tableFee) >= 0 ? C.green : C.red, sub: 'after fees' },
+            ].map(s => (
+              <div key={s.l} style={{ background: C.surface2, borderRadius: 8, padding: 8, textAlign: 'center' }}>
+                <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>{s.l}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: s.c }}>{s.v}</div>
+                <div style={{ fontSize: 8, color: C.text3, marginTop: 1 }}>{s.sub}</div>
+              </div>
+            ))}
+          </div>
+          {(pl.expenses > 0 || pl.tableFee > 0) && (
+            <div style={{ fontSize: 11, color: C.text3, display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: `1px solid ${C.border}` }}>
+              <span>Expenses: ${pl.expenses.toLocaleString()} · Table fee: ${pl.tableFee.toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {msg.text && (
         <div style={{ background: msg.type === 'error' ? 'rgba(248,113,113,.08)' : 'rgba(16,185,129,.08)', border: `1px solid ${msg.type === 'error' ? 'rgba(248,113,113,.2)' : 'rgba(16,185,129,.2)'}`, borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: msg.type === 'error' ? C.red : C.green }}>{msg.text}</div>

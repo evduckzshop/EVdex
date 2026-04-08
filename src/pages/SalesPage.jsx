@@ -1,16 +1,22 @@
 import { useRef, useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useSales } from '../hooks/useData'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSales, useShows } from '../hooks/useData'
 import { useContacts } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
+import { uploadPhoto } from '../lib/supabase'
 import { C, Label, Input, Select, ChipGroup, DealCalc, CtaButton, GhostButton, Toast, RecordCard, AutocompleteInput, PaymentPicker } from '../components/ui/FormComponents'
 
 export default function SalesPage() {
-  const { insert, rows, fetch, loading } = useSales()
+  const { insert, update, rows, fetch, loading } = useSales()
   const { rows: contacts, fetch: fetchContacts } = useContacts()
+  const { rows: shows, fetch: fetchShows } = useShows()
   const { profile } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const lockRef = useRef(false)
+
+  const editId = searchParams.get('edit')
+  const editRecord = editId ? rows.find(r => r.id === editId) : null
 
   const [saleType, setSaleType] = useState('Single card')
   const [desc, setDesc] = useState('')
@@ -20,17 +26,50 @@ export default function SalesPage() {
   const [cost, setCost] = useState('')
   const [buyer, setBuyer] = useState('')
   const [payment, setPayment] = useState('Cash')
+  const [showId, setShowId] = useState('')
+  const [photoFile, setPhotoFile] = useState(null)
+  const [photoName, setPhotoName] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
 
-  useEffect(() => { fetch(); fetchContacts() }, [])
+  useEffect(() => { fetch(); fetchContacts(); fetchShows() }, [])
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (editRecord) {
+      setSaleType(editRecord.sale_type || 'Single card')
+      setDesc(editRecord.description || '')
+      setMarket(editRecord.market_value ? String(editRecord.market_value) : '')
+      setPrice(editRecord.sale_price ? String(editRecord.sale_price) : '')
+      setPct(editRecord.pct_of_market ? String(editRecord.pct_of_market) : '100')
+      setCost(editRecord.cost_basis ? String(editRecord.cost_basis) : '')
+      setBuyer(editRecord.buyer || '')
+      setPayment(editRecord.payment || 'Cash')
+      setShowId(editRecord.show_id || '')
+      setPhotoName(editRecord.photo_url ? 'Existing photo' : '')
+    }
+  }, [editRecord?.id])
+
+  function pickPhoto() {
+    const inp = document.createElement('input')
+    inp.type = 'file'; inp.accept = 'image/*'
+    inp.onchange = e => { const f = e.target.files[0]; if (f) { setPhotoFile(f); setPhotoName(f.name) } }
+    inp.click()
+  }
 
   async function handleSave() {
     if (!desc.trim()) { setMsg({ text: 'Please enter a description.', type: 'error' }); return }
     if (!price) { setMsg({ text: 'Please enter a sale price.', type: 'error' }); return }
     setSaving(true)
     try {
-      await insert({
+      let photo_url = editRecord?.photo_url || null
+      if (photoFile) {
+        photo_url = await uploadPhoto(profile.id, photoFile)
+      } else if (!photoName) {
+        photo_url = null
+      }
+
+      const record = {
         description: desc.trim(),
         sale_type: saleType,
         market_value: parseFloat(market) || null,
@@ -39,10 +78,20 @@ export default function SalesPage() {
         cost_basis: parseFloat(cost) || null,
         buyer: buyer || null,
         payment,
-      })
-      setMsg({ text: 'Sale saved!', type: 'success' })
-      resetForm()
-      setTimeout(() => navigate('/'), 600)
+        show_id: showId || null,
+        photo_url,
+      }
+
+      if (editId && editRecord) {
+        await update(editId, record)
+        setMsg({ text: 'Sale updated!', type: 'success' })
+        setTimeout(() => navigate('/sales', { replace: true }), 600)
+      } else {
+        await insert(record)
+        setMsg({ text: 'Sale saved!', type: 'success' })
+        resetForm()
+        setTimeout(() => navigate('/'), 600)
+      }
     } catch (e) {
       setMsg({ text: 'Error: ' + e.message, type: 'error' })
     } finally {
@@ -52,17 +101,21 @@ export default function SalesPage() {
 
   function resetForm() {
     setSaleType('Single card'); setDesc(''); setMarket(''); setPrice(''); setPct('100')
-    setCost(''); setBuyer(''); setPayment('Cash')
+    setCost(''); setBuyer(''); setPayment('Cash'); setShowId(''); setPhotoFile(null); setPhotoName('')
   }
 
   return (
     <div style={{ paddingTop: 12 }}>
       <div style={{ background: 'linear-gradient(135deg,#0d2018,#1E293B)', borderRadius: 18, padding: 18, marginBottom: 12, border: '1px solid rgba(16,185,129,.15)' }}>
-        <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.5)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Sales ledger</div>
-        <div style={{ fontSize: 26, fontWeight: 700, color: '#fff', letterSpacing: -1, margin: '4px 0 2px' }}>
-          ${rows.reduce((s, r) => s + Number(r.sale_price), 0).toLocaleString()}
+        <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.5)', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+          {editId ? 'Edit sale' : 'Sales ledger'}
         </div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>{rows.length} sales · avg {rows.length ? Math.round(rows.reduce((s,r) => s + (r.pct_of_market||0), 0) / rows.length) : 0}% of market</div>
+        <div style={{ fontSize: 26, fontWeight: 700, color: '#fff', letterSpacing: -1, margin: '4px 0 2px' }}>
+          {editId ? desc || 'Edit sale' : `$${rows.reduce((s, r) => s + Number(r.sale_price), 0).toLocaleString()}`}
+        </div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>
+          {editId ? 'Update the details below' : `${rows.length} sales · avg ${rows.length ? Math.round(rows.reduce((s,r) => s + (r.pct_of_market||0), 0) / rows.length) : 0}% of market`}
+        </div>
       </div>
 
       <Toast message={msg.text} type={msg.type} />
@@ -86,28 +139,62 @@ export default function SalesPage() {
       <Label>Sold to</Label>
       <AutocompleteInput contacts={contacts} value={buyer} onSelect={setBuyer} placeholder="Buyer name or search contacts…" />
 
+      <Label>Show (optional)</Label>
+      <Select value={showId} onChange={e => setShowId(e.target.value)}>
+        <option value="">No show — general sale</option>
+        {shows.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+      </Select>
+
+      <Label>Photo (optional)</Label>
+      {photoName ? (
+        <div style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, padding: '10px 12px', marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 8, background: 'rgba(37,99,235,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="2" y="5" width="16" height="12" rx="2" stroke="#60A5FA" strokeWidth="1.3"/><circle cx="10" cy="11" r="3" stroke="#60A5FA" strokeWidth="1.3"/></svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photoName}</div>
+            <div style={{ fontSize: 10, color: C.text3, marginTop: 2 }}>Attached</div>
+          </div>
+          <div onClick={() => { setPhotoFile(null); setPhotoName('') }} style={{ fontSize: 11, color: C.red, cursor: 'pointer', flexShrink: 0 }}>Remove</div>
+        </div>
+      ) : (
+        <div onClick={pickPhoto} style={{ background: C.surface2, borderRadius: 12, border: '1.5px dashed rgba(255,255,255,.1)', padding: 14, textAlign: 'center', cursor: 'pointer', marginTop: 8 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(37,99,235,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px' }}>
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><rect x="2" y="5" width="16" height="12" rx="2" stroke="#60A5FA" strokeWidth="1.3"/><circle cx="10" cy="11" r="3" stroke="#60A5FA" strokeWidth="1.3"/><path d="M7 5l1-2h4l1 2" stroke="#60A5FA" strokeWidth="1.3" strokeLinecap="round"/></svg>
+          </div>
+          <div style={{ fontSize: 12, color: C.text3, fontWeight: 500 }}>Tap to attach photo</div>
+        </div>
+      )}
+
       <PaymentPicker options={['Cash','Venmo','Zelle','Card']} value={payment} onChange={setPayment} />
 
       <Label>Logged by</Label>
       <div style={{ fontSize: 13, color: C.text2, padding: '8px 0' }}>{profile?.full_name}</div>
 
       <CtaButton onClick={handleSave} disabled={saving} color="green">
-        {saving ? 'Saving…' : 'Save sale'}
+        {saving ? 'Saving…' : editId ? 'Update sale' : 'Save sale'}
       </CtaButton>
-      <GhostButton onClick={() => navigate('/')}>Cancel</GhostButton>
+      <GhostButton onClick={() => editId ? navigate('/sales', { replace: true }) : navigate('/')}>Cancel</GhostButton>
 
-      <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', margin: '20px 0 8px' }}>
-        Recent sales
-      </div>
-      {loading ? (
-        <div style={{ textAlign: 'center', color: C.text3, padding: 20 }}>Loading…</div>
-      ) : rows.slice(0, 10).map(r => (
-        <RecordCard
-          key={r.id} item={r}
-          amtColor={C.green} amt={`+$${Number(r.sale_price).toFixed(0)}`}
-          meta={`${r.buyer || 'Unknown'} · ${r.pct_of_market ? r.pct_of_market + '% of mkt · ' : ''}${new Date(r.created_at).toLocaleDateString()}`}
-        />
-      ))}
+      {!editId && (
+        <>
+          <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', margin: '20px 0 8px', display: 'flex', justifyContent: 'space-between' }}>
+            Recent sales
+            <span onClick={() => navigate('/transactions')} style={{ fontSize: 11, color: '#3B82F6', fontWeight: 500, textTransform: 'none', letterSpacing: 0, cursor: 'pointer' }}>View all →</span>
+          </div>
+          {loading ? (
+            <div style={{ textAlign: 'center', color: C.text3, padding: 20 }}>Loading…</div>
+          ) : rows.slice(0, 10).map(r => (
+            <div key={r.id} onClick={() => navigate(`/sales?edit=${r.id}`)} style={{ cursor: 'pointer' }}>
+              <RecordCard
+                item={r}
+                amtColor={C.green} amt={`+$${Number(r.sale_price).toFixed(0)}`}
+                meta={`${r.buyer || 'Unknown'} · ${r.pct_of_market ? r.pct_of_market + '% of mkt · ' : ''}${new Date(r.created_at).toLocaleDateString()}`}
+              />
+            </div>
+          ))}
+        </>
+      )}
       <div style={{ height: 16 }} />
     </div>
   )

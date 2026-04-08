@@ -25,6 +25,7 @@ const NAV_ITEMS = [
     { id: 'expenses',  label: 'Expenses',  path: '/expenses',  adminOnly: false },
   ]},
   { group: 'Financials', items: [
+    { id: 'transactions', label: 'Transactions', path: '/transactions', adminOnly: false },
     { id: 'cashflow', label: 'Cash Flow',     path: '/cashflow', adminOnly: true },
     { id: 'pl',       label: 'Profit & Loss', path: '/pl',       adminOnly: true },
   ]},
@@ -248,7 +249,7 @@ export default function AppLayout({ children }) {
 }
 
 function getPageTitle(path) {
-  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/export': 'Export CSV', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/settings': 'Settings', '/profile': 'Profile' }
+  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/transactions': 'Transactions', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/export': 'Export CSV', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/settings': 'Settings', '/profile': 'Profile' }
   return map[path] || 'EVdex'
 }
 
