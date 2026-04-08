@@ -20,6 +20,7 @@ const InventoryPage  = lazy(() => import('./pages/InventoryPage'))
 const ContactsPage   = lazy(() => import('./pages/ContactsPage'))
 const ShowManagePage = lazy(() => import('./pages/ShowManagePage'))
 const TransactionsPage = lazy(() => import('./pages/TransactionsPage'))
+const PongPage         = lazy(() => import('./pages/PongPage'))
 const CashFlowPage   = lazy(() => import('./pages/CashFlowPage'))
 const PLPage         = lazy(() => import('./pages/PLPage'))
 const ReportingPage  = lazy(() => import('./pages/ReportingPage'))
@@ -71,6 +72,7 @@ export default function App() {
           <Route path="/shows/manage" element={<RequireAuth><Layout><ShowManagePage /></Layout></RequireAuth>} />
           <Route path="/profile" element={<RequireAuth><Layout><ProfilePage /></Layout></RequireAuth>} />
           <Route path="/transactions" element={<RequireAuth><Layout><TransactionsPage /></Layout></RequireAuth>} />
+          <Route path="/pong" element={<RequireAuth><Layout><PongPage /></Layout></RequireAuth>} />
 
           {/* ── Admin only ── */}
           <Route path="/cashflow" element={<RequireAdmin><Layout><CashFlowPage /></Layout></RequireAdmin>} />

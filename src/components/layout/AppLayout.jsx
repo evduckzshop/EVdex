@@ -40,6 +40,7 @@ const NAV_ITEMS = [
   { group: 'Other', items: [
     { id: 'contacts', label: 'Contacts', path: '/contacts', adminOnly: false },
     { id: 'settings', label: 'Settings', path: '/settings', adminOnly: true },
+    { id: 'pong',     label: 'Pong',     path: '/pong',     adminOnly: false },
   ]},
 ]
 
@@ -249,7 +250,7 @@ export default function AppLayout({ children }) {
 }
 
 function getPageTitle(path) {
-  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/transactions': 'Transactions', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/export': 'Export CSV', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/settings': 'Settings', '/profile': 'Profile' }
+  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/transactions': 'Transactions', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/export': 'Export CSV', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/settings': 'Settings', '/profile': 'Profile', '/pong': 'Pong' }
   return map[path] || 'EVdex'
 }
 
