@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
+import { supabase, logActivity } from '../lib/supabase'
 
 const C = {
   surface: '#1E293B', surface2: '#162032', surface3: '#0F172A',
@@ -53,8 +53,10 @@ function ActivityCard({ item, onTap }) {
   )
 }
 
-function ActivityDetail({ item, onClose }) {
+function ActivityDetail({ item, onClose, isAdmin, onDelete }) {
   if (!item) return null
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const isSale = item.type === 'sale'
   const isBuy = item.type === 'buy'
   const isExpense = item.type === 'expense'
@@ -95,6 +97,29 @@ function ActivityDetail({ item, onClose }) {
   rows.push({ label: 'Logged by', value: item.who || '—' })
   rows.push({ label: 'Time', value: new Date(item.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) })
 
+  async function handleDelete() {
+    if (!confirmDelete) { setConfirmDelete(true); return }
+    setDeleting(true)
+    try {
+      const table = isSale ? 'sales' : isBuy ? 'buys' : 'expenses'
+      const { error } = await supabase.from(table).delete().eq('id', item.id)
+      if (error) throw error
+      await logActivity({
+        actionType: `delete_${table.replace(/s$/, '')}`,
+        entityType: table,
+        entityId: item.id,
+        summary: `Deleted ${table.replace(/s$/, '')}: ${item.description}`,
+        beforeData: item,
+      })
+      onDelete(item.id)
+      onClose()
+    } catch (e) {
+      console.error('Delete failed:', e)
+      setDeleting(false)
+      setConfirmDelete(false)
+    }
+  }
+
   return (
     <>
       {/* Backdrop */}
@@ -105,7 +130,7 @@ function ActivityDetail({ item, onClose }) {
         width: '100%', maxWidth: 390, zIndex: 301,
         background: '#0F172A', borderRadius: '20px 20px 0 0',
         padding: '16px 18px max(20px, env(safe-area-inset-bottom))',
-        maxHeight: '75vh', overflowY: 'auto',
+        maxHeight: '80vh', overflowY: 'auto',
       }}>
         {/* Handle */}
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.15)', margin: '0 auto 14px' }} />
@@ -118,6 +143,13 @@ function ActivityDetail({ item, onClose }) {
           </div>
           <div onClick={onClose} style={{ fontSize: 12, color: C.text3, cursor: 'pointer', padding: '4px 10px', background: 'rgba(255,255,255,.05)', borderRadius: 8 }}>Close</div>
         </div>
+
+        {/* Photo */}
+        {item.photo_url && (
+          <div style={{ marginBottom: 12, borderRadius: 12, overflow: 'hidden', border: `1px solid ${C.border}` }}>
+            <img src={item.photo_url} alt={item.description} style={{ width: '100%', maxHeight: 200, objectFit: 'cover', display: 'block' }} />
+          </div>
+        )}
 
         {/* Amount hero */}
         <div style={{ background: C.surface2, borderRadius: 14, padding: 14, marginBottom: 12, textAlign: 'center', border: `1px solid ${C.border}` }}>
@@ -142,6 +174,24 @@ function ActivityDetail({ item, onClose }) {
             </div>
           ))}
         </div>
+
+        {/* Admin delete */}
+        {isAdmin && (isSale || isBuy) && (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            style={{
+              width: '100%', padding: 13, borderRadius: 12, marginTop: 14,
+              background: confirmDelete ? '#DC2626' : 'rgba(248,113,113,.08)',
+              border: confirmDelete ? 'none' : '1px solid rgba(248,113,113,.15)',
+              fontSize: 14, fontWeight: 600,
+              color: confirmDelete ? '#fff' : C.red,
+              cursor: deleting ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {deleting ? 'Deleting...' : confirmDelete ? 'Tap again to confirm delete' : 'Delete this record'}
+          </button>
+        )}
       </div>
     </>
   )
@@ -168,8 +218,8 @@ export default function HomePage() {
       const ts = todayStart.toISOString()
 
       const [salesRes, buysRes, expRes, showsRes] = await Promise.all([
-        supabase.from('sales').select('id,description,sale_type,sale_price,market_value,pct_of_market,cost_basis,buyer,payment,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
-        supabase.from('buys').select('id,description,buy_type,amount_paid,market_value,pct_of_market,qty,condition,source,payment,notes,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
+        supabase.from('sales').select('id,description,sale_type,sale_price,market_value,pct_of_market,cost_basis,buyer,payment,photo_url,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
+        supabase.from('buys').select('id,description,buy_type,amount_paid,market_value,pct_of_market,qty,condition,source,payment,notes,photo_url,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
         supabase.from('expenses').select('id,description,category,amount,payment,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
         supabase.from('shows').select('*').in('status', ['upcoming','in_progress']).order('event_date', { ascending: true }),
       ])
@@ -331,7 +381,14 @@ export default function HomePage() {
       )}
 
       {/* Activity detail bottom sheet */}
-      {selectedItem && <ActivityDetail item={selectedItem} onClose={() => setSelectedItem(null)} />}
+      {selectedItem && (
+        <ActivityDetail
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+          isAdmin={isAdmin}
+          onDelete={(id) => setActivity(prev => prev.filter(a => a.id !== id))}
+        />
+      )}
 
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
     </div>

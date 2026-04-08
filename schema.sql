@@ -253,6 +253,9 @@ create policy "Employees can update their own sales"
 create policy "Admins can update all sales"
   on public.sales for update using (public.is_admin());
 
+create policy "Admins can delete sales"
+  on public.sales for delete using (public.is_admin());
+
 -- ── BUYS ──────────────────────────────────────────────────────
 create policy "Authenticated users can insert buys"
   on public.buys for insert
@@ -269,6 +272,9 @@ create policy "Employees can update their own buys"
 
 create policy "Admins can update all buys"
   on public.buys for update using (public.is_admin());
+
+create policy "Admins can delete buys"
+  on public.buys for delete using (public.is_admin());
 
 -- ── EXPENSES ──────────────────────────────────────────────────
 create policy "Authenticated users can insert expenses"
