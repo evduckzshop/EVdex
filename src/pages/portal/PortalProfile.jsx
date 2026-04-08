@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+import { supabase, uploadAvatar } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { signOut } from '../../lib/supabase'
 import { C, TIER_COLORS } from '../../components/layout/CustomerLayout'
 
 export default function PortalProfile() {
-  const { user, profile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const [customer, setCustomer] = useState(null)
   const [tier, setTier] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [avatarMsg, setAvatarMsg] = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -39,6 +41,29 @@ export default function PortalProfile() {
     }
   }
 
+  function pickAvatar() {
+    const inp = document.createElement('input')
+    inp.type = 'file'
+    inp.accept = 'image/*'
+    inp.onchange = async (e) => {
+      const file = e.target.files[0]
+      if (!file) return
+      setUploading(true)
+      setAvatarMsg('')
+      try {
+        await uploadAvatar(user.id, file, true)
+        await refreshProfile()
+        setAvatarMsg('Photo updated!')
+        setTimeout(() => setAvatarMsg(''), 2000)
+      } catch (err) {
+        setAvatarMsg('Failed to upload: ' + err.message)
+      } finally {
+        setUploading(false)
+      }
+    }
+    inp.click()
+  }
+
   if (loading) return <div style={{ textAlign: 'center', color: C.text3, padding: 40 }}>Loading...</div>
 
   const tierSlug = tier?.tier_slug || 'bronze'
@@ -51,15 +76,33 @@ export default function PortalProfile() {
         background: C.surface, borderRadius: 18, padding: 20, marginBottom: 14,
         border: `1px solid ${C.border}`, textAlign: 'center',
       }}>
-        <div style={{
-          width: 64, height: 64, borderRadius: '50%', margin: '0 auto 12px',
-          background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+        <div onClick={pickAvatar} style={{
+          width: 72, height: 72, borderRadius: '50%', margin: '0 auto 8px',
+          background: profile?.avatar_url
+            ? `url(${profile.avatar_url}) center/cover no-repeat`
+            : 'linear-gradient(135deg, #F59E0B, #D97706)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 24, fontWeight: 700, color: '#fff',
-          border: `3px solid ${tc.text}`,
+          fontSize: 26, fontWeight: 700, color: '#fff',
+          border: `3px solid ${tc.text}`, cursor: 'pointer',
+          position: 'relative',
         }}>
-          {profile?.full_name?.[0]?.toUpperCase() || 'C'}
+          {!profile?.avatar_url && (profile?.full_name?.[0]?.toUpperCase() || 'C')}
+          <div style={{
+            position: 'absolute', bottom: -2, right: -2,
+            width: 24, height: 24, borderRadius: '50%',
+            background: C.surface, border: `2px solid ${C.bg}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
+              <rect x="2" y="5" width="16" height="12" rx="2" stroke="#F59E0B" strokeWidth="1.5"/>
+              <circle cx="10" cy="11" r="3" stroke="#F59E0B" strokeWidth="1.5"/>
+              <path d="M7 5l1-2h4l1 2" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
         </div>
+        {uploading && <div style={{ fontSize: 11, color: C.amber, marginBottom: 4 }}>Uploading...</div>}
+        {avatarMsg && <div style={{ fontSize: 11, color: avatarMsg.startsWith('Failed') ? C.red : C.green, marginBottom: 4 }}>{avatarMsg}</div>}
+        <div style={{ fontSize: 11, color: C.text3, marginBottom: 6, cursor: 'pointer' }} onClick={pickAvatar}>Tap photo to change</div>
         <div style={{ fontSize: 18, fontWeight: 700, color: C.text }}>
           {profile?.full_name || customer?.display_name || 'Customer'}
         </div>

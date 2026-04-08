@@ -53,14 +53,16 @@ export default function CustomerLayout({ children }) {
             Rewards Portal
           </div>
         </div>
-        <div style={{
-          width: 34, height: 34, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+        <div onClick={() => navigate('/portal/profile')} style={{
+          width: 34, height: 34, borderRadius: '50%', cursor: 'pointer',
+          background: profile?.avatar_url
+            ? `url(${profile.avatar_url}) center/cover no-repeat`
+            : 'linear-gradient(135deg, #F59E0B, #D97706)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 12, fontWeight: 700, color: '#fff',
           border: '2px solid rgba(245,158,11,.4)',
         }}>
-          {profile?.full_name?.[0]?.toUpperCase() || 'C'}
+          {!profile?.avatar_url && (profile?.full_name?.[0]?.toUpperCase() || 'C')}
         </div>
       </div>
 
