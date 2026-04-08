@@ -31,6 +31,7 @@ const NAV_ITEMS = [
   ]},
   { group: 'Reporting', items: [
     { id: 'reporting', label: 'General Reporting', path: '/reporting', adminOnly: true },
+    { id: 'compare',   label: 'Show Comparison',  path: '/shows/compare', adminOnly: true },
     { id: 'export',    label: 'Export CSV',        path: '/export',    adminOnly: true },
   ]},
   { group: 'Team', items: [
@@ -260,7 +261,7 @@ export default function AppLayout({ children }) {
 }
 
 function getPageTitle(path) {
-  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/transactions': 'Transactions', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/export': 'Export CSV', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/contacts/add': 'Add Contact', '/settings': 'Settings', '/profile': 'Profile', '/pong': 'Pong' }
+  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/transactions': 'Transactions', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/shows/compare': 'Show Comparison', '/export': 'Export CSV', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/contacts/add': 'Add Contact', '/settings': 'Settings', '/profile': 'Profile', '/pong': 'Pong' }
   if (map[path]) return map[path]
   if (path.match(/^\/contacts\/[^/]+\/edit$/)) return 'Edit Contact'
   if (path.match(/^\/contacts\/[^/]+$/)) return 'Contact'

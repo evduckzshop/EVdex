@@ -24,6 +24,7 @@ const ContactAddPage     = lazy(() => import('./pages/ContactsPage').then(m => (
 const ShowManagePage = lazy(() => import('./pages/ShowManagePage'))
 const TransactionsPage = lazy(() => import('./pages/TransactionsPage'))
 const PongPage         = lazy(() => import('./pages/PongPage'))
+const ShowComparePage  = lazy(() => import('./pages/ShowComparePage'))
 const CashFlowPage   = lazy(() => import('./pages/CashFlowPage'))
 const PLPage         = lazy(() => import('./pages/PLPage'))
 const ReportingPage  = lazy(() => import('./pages/ReportingPage'))
@@ -84,6 +85,7 @@ export default function App() {
           <Route path="/cashflow" element={<RequireAdmin><Layout><CashFlowPage /></Layout></RequireAdmin>} />
           <Route path="/pl" element={<RequireAdmin><Layout><PLPage /></Layout></RequireAdmin>} />
           <Route path="/reporting" element={<RequireAdmin><Layout><ReportingPage /></Layout></RequireAdmin>} />
+          <Route path="/shows/compare" element={<RequireAdmin><Layout><ShowComparePage /></Layout></RequireAdmin>} />
           <Route path="/export" element={<RequireAdmin><Layout><ExportPage /></Layout></RequireAdmin>} />
           <Route path="/employees" element={<RequireAdmin><Layout><EmployeesPage /></Layout></RequireAdmin>} />
           <Route path="/activity" element={<RequireAdmin><Layout><ActivityPage /></Layout></RequireAdmin>} />

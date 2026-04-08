@@ -5,6 +5,7 @@ import { useContacts } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
 import { uploadPhoto } from '../lib/supabase'
 import { C, Label, Input, Select, ChipGroup, DealCalc, CtaButton, GhostButton, Toast, RecordCard, AutocompleteInput, PaymentPicker } from '../components/ui/FormComponents'
+import QuickLog from '../components/ui/QuickLog'
 
 export default function SalesPage() {
   const { insert, update, rows, fetch, loading } = useSales()
@@ -32,6 +33,7 @@ export default function SalesPage() {
   const [photoName, setPhotoName] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
+  const [quickLog, setQuickLog] = useState(false)
 
   useEffect(() => { fetch(); fetchContacts(); fetchShows() }, [])
 
@@ -124,6 +126,17 @@ export default function SalesPage() {
 
       <Toast message={msg.text} type={msg.type} />
 
+      {!editId && (
+        <div onClick={() => setQuickLog(!quickLog)} style={{ fontSize: 12, color: C.accent2, cursor: 'pointer', marginBottom: 10, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M13 2l-3 7h5l-5 9 1-6H6l4-10z" stroke="#3B82F6" strokeWidth="1.3" strokeLinejoin="round"/></svg>
+          {quickLog ? 'Full form' : 'Quick log'}
+        </div>
+      )}
+
+      {quickLog && !editId ? (
+        <QuickLog activeShowId={searchParams.get('show') || ''} onDone={() => { setQuickLog(false); navigate('/') }} />
+      ) : (
+      <>
       <Label top={false}>Sale type</Label>
       <ChipGroup options={['Single card','Lot','Slab','Other']} value={saleType} onChange={setSaleType} color="green" />
 
@@ -179,6 +192,8 @@ export default function SalesPage() {
         {saving ? 'Saving…' : editId ? 'Update sale' : 'Save sale'}
       </CtaButton>
       <GhostButton onClick={() => editId ? navigate('/sales', { replace: true }) : navigate('/')}>Cancel</GhostButton>
+      </>
+      )}
 
       {!editId && (
         <>

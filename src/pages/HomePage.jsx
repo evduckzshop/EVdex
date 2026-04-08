@@ -236,13 +236,23 @@ function ActivityDetail({ item, onClose, isAdmin, onDelete, navigate }) {
 export default function HomePage() {
   const { isAdmin, profile } = useAuth()
   const navigate = useNavigate()
-  const [stats, setStats] = useState({ todaySales: 0, todayBuys: 0, todayExpenses: 0, txCount: 0 })
+  const [stats, setStats] = useState({ todaySales: 0, todayBuys: 0, todayExpenses: 0, txCount: 0, weekSales: 0, weekBuys: 0 })
   const [activity, setActivity] = useState([])
   const [shows, setShows] = useState([])
   const [activeShowId, setActiveShowId] = useState(null)
   const [liveShow, setLiveShow] = useState({ sales: 0, buys: 0, fee: 0 })
   const [loading, setLoading] = useState(true)
   const [selectedItem, setSelectedItem] = useState(null)
+  const [showCustomize, setShowCustomize] = useState(false)
+
+  // Customizable preferences
+  const userId = profile?.id || 'default'
+  const prefKey = `evdex_dash_${userId}`
+  const defaultPrefs = { quickActions: ['sales', 'buys', 'shows', 'contacts'], heroStat: 'today_revenue' }
+  const [prefs, setPrefs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(prefKey)) || defaultPrefs } catch { return defaultPrefs }
+  })
+  function savePrefs(p) { setPrefs(p); localStorage.setItem(prefKey, JSON.stringify(p)) }
 
   useEffect(() => { loadData() }, [])
 
@@ -268,7 +278,17 @@ export default function HomePage() {
       const todayBuys = buys.reduce((s, r) => s + Number(r.amount_paid), 0)
       const todayExpenses = expenses.reduce((s, r) => s + Number(r.amount), 0)
 
-      setStats({ todaySales, todayBuys, todayExpenses, txCount: sales.length + buys.length + expenses.length })
+      // Also fetch week data for dashboard options
+      const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
+      const wts = weekAgo.toISOString()
+      const [wSales, wBuys] = await Promise.all([
+        supabase.from('sales').select('sale_price').gte('created_at', wts),
+        supabase.from('buys').select('amount_paid').gte('created_at', wts),
+      ])
+      const weekSales = (wSales.data || []).reduce((s, r) => s + Number(r.sale_price), 0)
+      const weekBuys = (wBuys.data || []).reduce((s, r) => s + Number(r.amount_paid), 0)
+
+      setStats({ todaySales, todayBuys, todayExpenses, txCount: sales.length + buys.length + expenses.length, weekSales, weekBuys })
       setShows(showData)
 
       // Merge into activity feed — include all fields for detail view
@@ -297,12 +317,25 @@ export default function HomePage() {
   const liveNet = liveShow.sales - liveShow.buys - liveShow.fee
 
   const showParam = activeShowId ? `?show=${activeShowId}` : ''
-  const QUICK_ACTIONS = [
-    { label: 'Log sale',   path: `/sales${showParam}`,   bg: 'rgba(16,185,129,.12)',  color: '#10B981',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" stroke="#10B981" strokeWidth="1.5"/><path d="M9 5.5v7M6 9h6" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round"/></svg> },
-    { label: 'Log buy',    path: `/buys${showParam}`,    bg: 'rgba(248,113,113,.1)',   color: '#F87171',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M3 3h2.5l2.5 8.5h7L16 6H6" stroke="#F87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="8" cy="15" r="1" fill="#F87171"/><circle cx="14" cy="15" r="1" fill="#F87171"/></svg> },
-    { label: 'Log show',   path: '/shows',   bg: 'rgba(245,158,11,.1)',   color: '#F59E0B',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><rect x="2" y="4" width="14" height="11" rx="2" stroke="#F59E0B" strokeWidth="1.5"/><path d="M2 7h14M6 2v4M12 2v4" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round"/></svg> },
-    { label: 'Contacts',   path: '/contacts',bg: 'rgba(37,99,235,.12)',   color: '#60A5FA',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><circle cx="7" cy="6" r="3" stroke="#60A5FA" strokeWidth="1.5"/><path d="M2 15c0-2.8 2.2-5 5-5" stroke="#60A5FA" strokeWidth="1.5" strokeLinecap="round"/><path d="M14 11v5M11.5 13.5h5" stroke="#60A5FA" strokeWidth="1.5" strokeLinecap="round"/></svg> },
-  ]
+  const ALL_ACTIONS = {
+    sales:      { label: 'Log sale',   path: `/sales${showParam}`,   bg: 'rgba(16,185,129,.12)',  color: '#10B981',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" stroke="#10B981" strokeWidth="1.5"/><path d="M9 5.5v7M6 9h6" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+    buys:       { label: 'Log buy',    path: `/buys${showParam}`,    bg: 'rgba(248,113,113,.1)',   color: '#F87171',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M3 3h2.5l2.5 8.5h7L16 6H6" stroke="#F87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="8" cy="15" r="1" fill="#F87171"/><circle cx="14" cy="15" r="1" fill="#F87171"/></svg> },
+    shows:      { label: 'Shows',      path: '/shows/manage', bg: 'rgba(245,158,11,.1)',   color: '#F59E0B',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><rect x="2" y="4" width="14" height="11" rx="2" stroke="#F59E0B" strokeWidth="1.5"/><path d="M2 7h14M6 2v4M12 2v4" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+    contacts:   { label: 'Contacts',   path: '/contacts',     bg: 'rgba(37,99,235,.12)',   color: '#60A5FA',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><circle cx="7" cy="6" r="3" stroke="#60A5FA" strokeWidth="1.5"/><path d="M2 15c0-2.8 2.2-5 5-5" stroke="#60A5FA" strokeWidth="1.5" strokeLinecap="round"/><path d="M14 11v5M11.5 13.5h5" stroke="#60A5FA" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+    expenses:   { label: 'Expenses',   path: '/expenses',     bg: 'rgba(245,158,11,.08)',  color: '#D97706',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M9 1v16M5 4.5C5 3 7 2 9 2s4 1 4 2.5S11 7 9 7 5 8.5 5 10s2 3.5 4 3.5 4-1.5 4-3" stroke="#D97706" strokeWidth="1.3" strokeLinecap="round"/></svg> },
+    inventory:  { label: 'Inventory',  path: '/inventory',    bg: 'rgba(37,99,235,.08)',   color: '#60A5FA',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><rect x="2" y="3" width="14" height="12" rx="2" stroke="#60A5FA" strokeWidth="1.3"/><path d="M2 7h14" stroke="#60A5FA" strokeWidth="1.3"/></svg> },
+    transactions:{ label: 'Transactions', path: '/transactions', bg: 'rgba(16,185,129,.08)', color: '#10B981', icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h12M3 13h8" stroke="#10B981" strokeWidth="1.3" strokeLinecap="round"/></svg> },
+    quicklog:   { label: 'Quick log',  path: `/sales${showParam}?quick=1`, bg: 'rgba(124,58,237,.12)', color: '#A78BFA', icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M12 1l-3 7h5l-5 9 1-6H5l4-10z" stroke="#A78BFA" strokeWidth="1.2" strokeLinejoin="round"/></svg> },
+  }
+  const QUICK_ACTIONS = prefs.quickActions.map(k => ALL_ACTIONS[k]).filter(Boolean)
+
+  const HERO_OPTIONS = {
+    today_revenue: { label: "Today's revenue", val: `$${stats.todaySales.toLocaleString()}`, sub: `${stats.txCount} transactions today` },
+    today_net: { label: "Today's net", val: `$${(stats.todaySales - stats.todayBuys - stats.todayExpenses).toLocaleString()}`, sub: `Revenue minus buys & expenses` },
+    week_revenue: { label: "This week's revenue", val: `$${stats.weekSales.toLocaleString()}`, sub: `Last 7 days` },
+    week_net: { label: "This week's net", val: `$${(stats.weekSales - stats.weekBuys).toLocaleString()}`, sub: `Last 7 days revenue minus buys` },
+  }
+  const heroData = HERO_OPTIONS[prefs.heroStat] || HERO_OPTIONS.today_revenue
 
   return (
     <PullToRefresh onRefresh={loadData}>
@@ -310,11 +343,16 @@ export default function HomePage() {
 
       {/* Hero */}
       <div style={{ background: 'linear-gradient(135deg,#1E3A8A,#1E293B)', borderRadius: 18, padding: 18, marginBottom: 12 }}>
-        <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.5)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Today's revenue</div>
-        <div style={{ fontSize: 28, fontWeight: 700, color: '#fff', letterSpacing: -1, margin: '4px 0 2px' }}>
-          ${stats.todaySales.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.5)', letterSpacing: '.08em', textTransform: 'uppercase' }}>{heroData.label}</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: '#fff', letterSpacing: -1, margin: '4px 0 2px' }}>{heroData.val}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>{heroData.sub}</div>
+          </div>
+          <div onClick={() => setShowCustomize(true)} style={{ fontSize: 10, color: 'rgba(255,255,255,.4)', cursor: 'pointer', padding: '4px 8px', background: 'rgba(255,255,255,.06)', borderRadius: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M11.5 3.5l5 5M4 13l-1 4 4-1 9.5-9.5-3-3L4 13z" stroke="rgba(255,255,255,.5)" strokeWidth="1.3" strokeLinejoin="round"/></svg>
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>{stats.txCount} transactions logged today</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.1)' }}>
           {[
             { label: 'Spent (buys)', val: `$${stats.todayBuys.toFixed(0)}`, color: C.red },
@@ -379,10 +417,13 @@ export default function HomePage() {
       )}
 
       {/* Quick actions */}
-      <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>Quick actions</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 18 }}>
+      <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+        Quick actions
+        <span onClick={() => setShowCustomize(true)} style={{ fontSize: 11, color: C.accent2, fontWeight: 500, textTransform: 'none', letterSpacing: 0, cursor: 'pointer' }}>Customize</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(QUICK_ACTIONS.length, 4)},1fr)`, gap: 8, marginBottom: 18 }}>
         {QUICK_ACTIONS.map(a => (
-          <div key={a.path} onClick={() => navigate(a.path)} style={{ background: C.surface, borderRadius: 12, padding: '11px 6px 9px', textAlign: 'center', cursor: 'pointer', border: `1px solid ${C.border}` }}>
+          <div key={a.label} onClick={() => navigate(a.path)} style={{ background: C.surface, borderRadius: 12, padding: '11px 6px 9px', textAlign: 'center', cursor: 'pointer', border: `1px solid ${C.border}` }}>
             <div style={{ width: 26, height: 26, borderRadius: 8, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px' }}>
               {a.icon}
             </div>
@@ -419,6 +460,62 @@ export default function HomePage() {
           onDelete={(id) => setActivity(prev => prev.filter(a => a.id !== id))}
           navigate={navigate}
         />
+      )}
+
+      {/* Customize modal */}
+      {showCustomize && (
+        <>
+          <div onClick={() => setShowCustomize(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 300 }} />
+          <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 390, zIndex: 301, background: '#0F172A', borderRadius: '20px 20px 0 0', padding: '16px 18px max(20px, env(safe-area-inset-bottom))', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.15)', margin: '0 auto 14px' }} />
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 16 }}>Customize dashboard</div>
+
+            {/* Hero stat selector */}
+            <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>Main stat</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+              {Object.entries(HERO_OPTIONS).map(([key, opt]) => (
+                <div key={key} onClick={() => savePrefs({ ...prefs, heroStat: key })} style={{
+                  padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
+                  background: prefs.heroStat === key ? 'rgba(37,99,235,.12)' : C.surface,
+                  border: `1px solid ${prefs.heroStat === key ? 'rgba(37,99,235,.3)' : C.border}`,
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: prefs.heroStat === key ? 600 : 400, color: prefs.heroStat === key ? '#3B82F6' : C.text }}>{opt.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick actions selector */}
+            <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>Quick actions (pick 4)</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+              {Object.entries(ALL_ACTIONS).map(([key, action]) => {
+                const selected = prefs.quickActions.includes(key)
+                return (
+                  <button key={key} onClick={() => {
+                    let next
+                    if (selected) {
+                      next = prefs.quickActions.filter(k => k !== key)
+                    } else if (prefs.quickActions.length < 4) {
+                      next = [...prefs.quickActions, key]
+                    } else return
+                    savePrefs({ ...prefs, quickActions: next })
+                  }} style={{
+                    padding: '7px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                    border: `1px solid ${selected ? `${action.color}66` : C.border2}`,
+                    background: selected ? `${action.color}15` : C.surface,
+                    color: selected ? action.color : C.text3,
+                  }}>
+                    {action.label}
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: C.text3, textAlign: 'center', marginBottom: 12 }}>
+              {prefs.quickActions.length}/4 selected
+            </div>
+
+            <button onClick={() => setShowCustomize(false)} style={{ width: '100%', padding: 13, borderRadius: 12, background: C.accent, border: 'none', fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>Done</button>
+          </div>
+        </>
       )}
 
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
