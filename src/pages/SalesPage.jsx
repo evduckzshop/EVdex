@@ -20,6 +20,7 @@ export default function SalesPage() {
   const editRecord = editId ? rows.find(r => r.id === editId) : null
 
   const [saleType, setSaleType] = useState('Single card')
+  const [customSaleType, setCustomSaleType] = useState('')
   const [desc, setDesc] = useState('')
   const [market, setMarket] = useState('')
   const [price, setPrice] = useState('')
@@ -40,7 +41,15 @@ export default function SalesPage() {
   // Pre-fill form when editing
   useEffect(() => {
     if (editRecord) {
-      setSaleType(editRecord.sale_type || 'Single card')
+      const knownTypes = ['Single card', 'Lot', 'Slab', 'Sealed']
+      const editType = editRecord.sale_type || 'Single card'
+      if (knownTypes.includes(editType)) {
+        setSaleType(editType)
+        setCustomSaleType('')
+      } else {
+        setSaleType('Other')
+        setCustomSaleType(editType)
+      }
       setDesc(editRecord.description || '')
       setMarket(editRecord.market_value ? String(editRecord.market_value) : '')
       setPrice(editRecord.sale_price ? String(editRecord.sale_price) : '')
@@ -75,7 +84,7 @@ export default function SalesPage() {
 
       const record = {
         description: desc.trim(),
-        sale_type: saleType,
+        sale_type: saleType === 'Other' ? (customSaleType.trim() || 'Other') : saleType,
         market_value: parseFloat(market) || null,
         sale_price: parseFloat(price),
         pct_of_market: parseFloat(pct) || null,
@@ -106,7 +115,7 @@ export default function SalesPage() {
   }
 
   function resetForm() {
-    setSaleType('Single card'); setDesc(''); setMarket(''); setPrice(''); setPct('')
+    setSaleType('Single card'); setCustomSaleType(''); setDesc(''); setMarket(''); setPrice(''); setPct('')
     setCost(''); setBuyer(''); setBuyerContactId(null); setPayment('Cash'); setShowId(''); setPhotoFile(null); setPhotoName('')
   }
 
@@ -138,7 +147,10 @@ export default function SalesPage() {
       ) : (
       <>
       <Label top={false}>Sale type</Label>
-      <ChipGroup options={['Single card','Lot','Slab','Other']} value={saleType} onChange={setSaleType} color="green" />
+      <ChipGroup options={['Single card','Lot','Slab','Sealed','Other']} value={saleType} onChange={v => { setSaleType(v); if (v !== 'Other') setCustomSaleType('') }} color="green" />
+      {saleType === 'Other' && (
+        <Input value={customSaleType} onChange={e => setCustomSaleType(e.target.value)} placeholder="Enter sale type..." style={{ marginTop: 8 }} />
+      )}
 
       <Label>Card / item name</Label>
       <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Charizard ex SAR 151" />
