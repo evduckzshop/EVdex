@@ -190,14 +190,24 @@ export default function AppLayout({ children }) {
         justifyContent: 'space-between', flexShrink: 0, background: C.bg,
         borderBottom: `1px solid ${C.border}`,
       }}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: C.text, letterSpacing: -.4 }}>
-            {pageTitle}
-          </div>
-          <div style={{ fontSize: 11, color: C.text3, marginTop: 1 }}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-            {' · '}
-            {profile?.full_name}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {location.pathname !== '/' && (
+            <button onClick={() => navigate(-1)} style={{
+              width: 30, height: 30, borderRadius: 8, background: 'rgba(255,255,255,.06)',
+              border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M13 4l-6 6 6 6" stroke={C.text2} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          )}
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: C.text, letterSpacing: -.4 }}>
+              {pageTitle}
+            </div>
+            <div style={{ fontSize: 11, color: C.text3, marginTop: 1 }}>
+              {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              {' · '}
+              {profile?.full_name}
+            </div>
           </div>
         </div>
         <button onClick={() => setSidebarOpen(true)} style={{
