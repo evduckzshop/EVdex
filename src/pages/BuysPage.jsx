@@ -142,7 +142,7 @@ export default function BuysPage() {
       )}
 
       <Label>Payment method</Label>
-      <ChipGroup options={['Cash','Venmo','Zelle','Card']} value={payment} onChange={setPayment} color="green" />
+      <ChipGroup options={['Cash','Venmo','Zelle','Wire','Other']} value={payment} onChange={setPayment} color="green" />
 
       <Label>Notes (optional)</Label>
       <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. 80 cards, mostly holos, one PSA 9" />

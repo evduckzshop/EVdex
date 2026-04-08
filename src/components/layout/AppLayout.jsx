@@ -72,7 +72,7 @@ export default function AppLayout({ children }) {
 
   return (
     <div style={{
-      width: '100%', maxWidth: 390, height: '100vh', margin: '0 auto',
+      width: '100%', maxWidth: 390, height: '100dvh', margin: '0 auto',
       background: C.bg, display: 'flex', flexDirection: 'column',
       overflow: 'hidden', position: 'relative',
       transform: sidebarOpen ? 'scale(0.92) translateX(-20px)' : 'scale(1)',
@@ -117,12 +117,12 @@ export default function AppLayout({ children }) {
         <div style={{ padding: '4px 18px 14px', borderBottom: `1px solid ${C.border}` }}>
           <div style={{
             width: 52, height: 52, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #2563EB, #7C3AED)',
+            background: profile?.avatar_url ? `url(${profile.avatar_url}) center/cover no-repeat` : 'linear-gradient(135deg, #2563EB, #7C3AED)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 10,
             border: '2px solid rgba(37,99,235,.4)',
           }}>
-            {profile?.full_name?.[0]?.toUpperCase() || 'U'}
+            {!profile?.avatar_url && (profile?.full_name?.[0]?.toUpperCase() || 'U')}
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{profile?.full_name}</div>
           <div style={{ fontSize: 11, color: C.text3, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -203,12 +203,12 @@ export default function AppLayout({ children }) {
         </div>
         <button onClick={() => setSidebarOpen(true)} style={{
           width: 34, height: 34, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #2563EB, #7C3AED)',
+          background: profile?.avatar_url ? `url(${profile.avatar_url}) center/cover no-repeat` : 'linear-gradient(135deg, #2563EB, #7C3AED)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer',
           border: '2px solid #2563EB', flexShrink: 0,
         }}>
-          {profile?.full_name?.[0]?.toUpperCase() || 'U'}
+          {!profile?.avatar_url && (profile?.full_name?.[0]?.toUpperCase() || 'U')}
         </button>
       </div>
 
@@ -221,7 +221,7 @@ export default function AppLayout({ children }) {
       <nav style={{
         display: 'flex', background: C.surface3,
         borderTop: `1px solid ${C.border}`,
-        padding: '6px 0 max(10px, env(safe-area-inset-bottom))',
+        padding: '6px 0 max(16px, env(safe-area-inset-bottom))',
         flexShrink: 0,
       }}>
         {BOTTOM_TABS.map(tab => {

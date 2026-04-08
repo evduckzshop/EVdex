@@ -90,6 +90,30 @@ export async function logActivity({ actionType, entityType, entityId, summary, b
   if (error) console.error('Failed to log activity:', error.message)
 }
 
+// ── Avatar upload helper ──────────────────────────────────────
+
+export async function uploadAvatar(userId, file) {
+  const ext = file.name.split('.').pop()
+  const path = `${userId}/avatar.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { upsert: true })
+  if (uploadError) throw uploadError
+
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+  // Append cache-buster so the browser fetches the new image
+  const url = `${data.publicUrl}?t=${Date.now()}`
+
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update({ avatar_url: url, updated_at: new Date().toISOString() })
+    .eq('id', userId)
+  if (updateError) throw updateError
+
+  return url
+}
+
 // ── Invite helper (calls Edge Function) ───────────────────────
 
 export async function inviteEmployee({ email, fullName, role = 'employee' }) {
