@@ -81,7 +81,7 @@ export default function AppLayout({ children }) {
       <div
         onClick={() => setSidebarOpen(false)}
         style={{
-          position: 'fixed', inset: 0, maxWidth: 390, margin: '0 auto',
+          position: 'absolute', inset: 0,
           background: 'rgba(0,0,0,.55)', zIndex: 200,
           opacity: sidebarOpen ? 1 : 0,
           pointerEvents: sidebarOpen ? 'auto' : 'none',
@@ -91,10 +91,10 @@ export default function AppLayout({ children }) {
 
       {/* Sidebar */}
       <div style={{
-        position: 'fixed', top: 0, right: '50%', marginRight: -195, width: 300, height: '100%',
+        position: 'absolute', top: 0, right: 0, bottom: 0, width: 300,
         background: '#0B1120', borderLeft: `1px solid ${C.border2}`,
         borderRadius: '16px 0 0 16px', zIndex: 201, overflowY: 'auto',
-        transform: sidebarOpen ? 'translateX(195px)' : 'translateX(495px)',
+        transform: sidebarOpen ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform .3s cubic-bezier(.32,.72,0,1)',
         display: 'flex', flexDirection: 'column',
       }}>
