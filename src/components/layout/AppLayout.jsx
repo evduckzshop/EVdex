@@ -33,7 +33,7 @@ const NAV_ITEMS = [
     { id: 'export',    label: 'Export CSV',        path: '/export',    adminOnly: true },
   ]},
   { group: 'Team', items: [
-    { id: 'employees', label: 'Employees',   path: '/employees', adminOnly: true },
+    { id: 'employees', label: 'Team',   path: '/employees', adminOnly: true },
     { id: 'activity',  label: 'Activity Log', path: '/activity',  adminOnly: true },
   ]},
   { group: 'Other', items: [
@@ -44,8 +44,8 @@ const NAV_ITEMS = [
 
 const BOTTOM_TABS = [
   { id: 'home',     label: 'Home',     path: '/',         icon: HomeIcon },
-  { id: 'buys',     label: 'Buys',     path: '/buys',     icon: BuysIcon },
   { id: 'sales',    label: 'Sales',    path: '/sales',    icon: SalesIcon },
+  { id: 'buys',     label: 'Buys',     path: '/buys',     icon: BuysIcon },
   { id: 'shows',    label: 'Shows',    path: '/shows',    icon: ShowsIcon },
   { id: 'expenses', label: 'Expenses', path: '/expenses', icon: ExpIcon },
 ]
@@ -75,30 +75,27 @@ export default function AppLayout({ children }) {
       width: '100%', maxWidth: 390, height: '100dvh', margin: '0 auto',
       background: C.bg, display: 'flex', flexDirection: 'column',
       overflow: 'hidden', position: 'relative',
-      transform: sidebarOpen ? 'scale(0.92) translateX(-20px)' : 'scale(1)',
-      transformOrigin: 'left center',
-      borderRadius: sidebarOpen ? 18 : 0,
-      transition: 'transform .35s cubic-bezier(.32,.72,0,1), border-radius .35s cubic-bezier(.32,.72,0,1)',
     }}>
 
       {/* Sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, maxWidth: 390, margin: '0 auto',
-            background: 'rgba(0,0,0,.55)', zIndex: 200,
-          }}
-        />
-      )}
+      <div
+        onClick={() => setSidebarOpen(false)}
+        style={{
+          position: 'fixed', inset: 0, maxWidth: 390, margin: '0 auto',
+          background: 'rgba(0,0,0,.55)', zIndex: 200,
+          opacity: sidebarOpen ? 1 : 0,
+          pointerEvents: sidebarOpen ? 'auto' : 'none',
+          transition: 'opacity .3s ease',
+        }}
+      />
 
       {/* Sidebar */}
       <div style={{
-        position: 'fixed', top: 0, right: 0, width: 300, height: '100%',
+        position: 'fixed', top: 0, right: '50%', marginRight: -195, width: 300, height: '100%',
         background: '#0B1120', borderLeft: `1px solid ${C.border2}`,
         borderRadius: '16px 0 0 16px', zIndex: 201, overflowY: 'auto',
-        transform: sidebarOpen ? 'translateX(0)' : 'translateX(300px)',
-        transition: 'transform .35s cubic-bezier(.32,.72,0,1)',
+        transform: sidebarOpen ? 'translateX(195px)' : 'translateX(495px)',
+        transition: 'transform .3s cubic-bezier(.32,.72,0,1)',
         display: 'flex', flexDirection: 'column',
       }}>
         {/* Close btn */}
@@ -251,7 +248,7 @@ export default function AppLayout({ children }) {
 }
 
 function getPageTitle(path) {
-  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Shows', '/shows/manage': 'Manage Shows', '/expenses': 'Expenses', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/export': 'Export CSV', '/employees': 'Employees', '/activity': 'Activity Log', '/contacts': 'Contacts', '/settings': 'Settings', '/profile': 'Profile' }
+  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Shows', '/shows/manage': 'Manage Shows', '/expenses': 'Expenses', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/export': 'Export CSV', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/settings': 'Settings', '/profile': 'Profile' }
   return map[path] || 'EVdex'
 }
 

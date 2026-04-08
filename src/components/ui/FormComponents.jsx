@@ -1,5 +1,5 @@
 // Shared UI primitives for all form pages
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 
 export const C = {
   surface: '#1E293B', surface2: '#162032', surface3: '#0F172A',
@@ -77,6 +77,85 @@ export function ChipGroup({ options, value, onChange, color = 'accent' }) {
           </button>
         )
       })}
+    </div>
+  )
+}
+
+function DealSlider({ pctNum, barColor, onPct, mktNum, amtNum }) {
+  const trackRef = useRef(null)
+  const [dragging, setDragging] = useState(false)
+  const displayPct = Math.min(pctNum, 100)
+
+  const calcPct = useCallback((clientX) => {
+    const track = trackRef.current
+    if (!track) return
+    const rect = track.getBoundingClientRect()
+    const x = Math.max(0, Math.min(clientX - rect.left, rect.width))
+    const newPct = Math.round((x / rect.width) * 100)
+    onPct(String(newPct))
+  }, [onPct])
+
+  function handlePointerDown(e) {
+    e.preventDefault()
+    setDragging(true)
+    calcPct(e.clientX)
+    trackRef.current?.setPointerCapture(e.pointerId)
+  }
+
+  function handlePointerMove(e) {
+    if (!dragging) return
+    e.preventDefault()
+    calcPct(e.clientX)
+  }
+
+  function handlePointerUp() {
+    setDragging(false)
+  }
+
+  const canDrag = mktNum > 0 || amtNum > 0
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: C.text3, marginBottom: 4 }}>
+        <span>0%</span><span>50%</span><span>75%</span><span>100%</span>
+      </div>
+      <div
+        ref={trackRef}
+        onPointerDown={canDrag ? handlePointerDown : undefined}
+        onPointerMove={canDrag ? handlePointerMove : undefined}
+        onPointerUp={canDrag ? handlePointerUp : undefined}
+        onPointerCancel={canDrag ? handlePointerUp : undefined}
+        style={{
+          height: 24, borderRadius: 3, background: 'transparent',
+          position: 'relative', cursor: canDrag ? 'pointer' : 'default',
+          touchAction: 'none', userSelect: 'none',
+        }}
+      >
+        {/* Track background */}
+        <div style={{ position: 'absolute', top: 9, left: 0, right: 0, height: 6, borderRadius: 3, background: 'rgba(255,255,255,.06)' }} />
+        {/* Filled portion */}
+        <div style={{ position: 'absolute', top: 9, left: 0, height: 6, borderRadius: 3, background: barColor, width: `${displayPct}%`, transition: dragging ? 'none' : 'width .3s' }} />
+        {/* Tick marks */}
+        {[50, 75].map(p => (
+          <div key={p} style={{ position: 'absolute', top: 6, left: `${p}%`, width: 1.5, height: 12, background: 'rgba(255,255,255,.15)', borderRadius: 1, pointerEvents: 'none' }} />
+        ))}
+        {/* Drag handle */}
+        {canDrag && displayPct > 0 && (
+          <div style={{
+            position: 'absolute', top: 2, left: `${displayPct}%`, transform: 'translateX(-50%)',
+            width: 20, height: 20, borderRadius: '50%',
+            background: barColor, border: '2px solid #0F172A',
+            boxShadow: `0 0 8px ${barColor}44`,
+            transition: dragging ? 'none' : 'left .3s',
+            pointerEvents: 'none',
+          }} />
+        )}
+      </div>
+      {canDrag && (
+        <div style={{ fontSize: 8, color: C.text3, textAlign: 'center', marginTop: 2, fontWeight: 500 }}>
+          Drag to adjust percentage
+        </div>
+      )}
     </div>
   )
 }
@@ -172,17 +251,7 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
             {tagText}
           </div>
         </div>
-        <div style={{ marginTop: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: C.text3, marginBottom: 4 }}>
-            <span>0%</span><span>50%</span><span>75%</span><span>100%</span>
-          </div>
-          <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,.06)', overflow: 'hidden', position: 'relative' }}>
-            <div style={{ height: '100%', borderRadius: 3, background: barColor, width: `${Math.min(pctNum, 100)}%`, transition: 'width .3s' }} />
-            {[50, 75].map(p => (
-              <div key={p} style={{ position: 'absolute', top: -3, left: `${p}%`, width: 1.5, height: 12, background: 'rgba(255,255,255,.15)', borderRadius: 1 }} />
-            ))}
-          </div>
-        </div>
+        <DealSlider pctNum={pctNum} barColor={barColor} onPct={onPct} mktNum={mktNum} amtNum={amtNum} />
         {isSale && amtNum > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
             <div style={{ fontSize: 10, color: C.text3 }}>Sale price</div>

@@ -157,11 +157,11 @@ export default function EmployeesPage() {
             >
               <div style={{
                 width: 38, height: 38, borderRadius: '50%',
-                background: p.role === 'admin' ? 'linear-gradient(135deg,#2563EB,#7C3AED)' : '#065F46',
+                background: p.avatar_url ? `url(${p.avatar_url}) center/cover no-repeat` : (p.role === 'admin' ? 'linear-gradient(135deg,#2563EB,#7C3AED)' : '#065F46'),
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0,
               }}>
-                {p.full_name?.[0]?.toUpperCase() || '?'}
+                {!p.avatar_url && (p.full_name?.[0]?.toUpperCase() || '?')}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>

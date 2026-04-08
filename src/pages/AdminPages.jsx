@@ -490,7 +490,7 @@ export function SettingsPage() {
       <div style={rcard}>
         <div style={rrowLast}>
           <div style={{ fontSize: 13, color: C.text2 }}>Manage workers &amp; invites</div>
-          <a href="/employees" style={{ fontSize: 12, color: C.accent2, textDecoration: 'none', fontWeight: 500 }}>Go to Employees →</a>
+          <a href="/employees" style={{ fontSize: 12, color: C.accent2, textDecoration: 'none', fontWeight: 500 }}>Go to Team →</a>
         </div>
       </div>
 
