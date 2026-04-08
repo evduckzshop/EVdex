@@ -238,7 +238,8 @@ export function ContactDetailPage() {
       setCustomerLink(data || false)
       setTimeout(() => setShowInvite(false), 2000)
     } catch (e) {
-      setInviteMsg({ text: e.message || 'Failed to send invite.', type: 'error' })
+      console.error('Invite error:', e)
+      setInviteMsg({ text: e.message || 'Failed to send invite. Check console for details.', type: 'error' })
     } finally {
       setInviting(false)
     }
