@@ -17,7 +17,10 @@ const BuysPage       = lazy(() => import('./pages/BuysPage'))
 const ExpensesPage   = lazy(() => import('./pages/ExpensesPage'))
 const ShowsPage      = lazy(() => import('./pages/ShowsPage'))
 const InventoryPage  = lazy(() => import('./pages/InventoryPage'))
-const ContactsPage   = lazy(() => import('./pages/ContactsPage'))
+const ContactsPage       = lazy(() => import('./pages/ContactsPage'))
+const ContactDetailPage  = lazy(() => import('./pages/ContactsPage').then(m => ({ default: m.ContactDetailPage })))
+const ContactEditPage    = lazy(() => import('./pages/ContactsPage').then(m => ({ default: m.ContactEditPage })))
+const ContactAddPage     = lazy(() => import('./pages/ContactsPage').then(m => ({ default: m.ContactAddPage })))
 const ShowManagePage = lazy(() => import('./pages/ShowManagePage'))
 const TransactionsPage = lazy(() => import('./pages/TransactionsPage'))
 const PongPage         = lazy(() => import('./pages/PongPage'))
@@ -69,6 +72,9 @@ export default function App() {
           <Route path="/shows" element={<RequireAuth><Layout><ShowsPage /></Layout></RequireAuth>} />
           <Route path="/inventory" element={<RequireAuth><Layout><InventoryPage /></Layout></RequireAuth>} />
           <Route path="/contacts" element={<RequireAuth><Layout><ContactsPage /></Layout></RequireAuth>} />
+          <Route path="/contacts/add" element={<RequireAuth><Layout><ContactAddPage /></Layout></RequireAuth>} />
+          <Route path="/contacts/:id" element={<RequireAuth><Layout><ContactDetailPage /></Layout></RequireAuth>} />
+          <Route path="/contacts/:id/edit" element={<RequireAuth><Layout><ContactEditPage /></Layout></RequireAuth>} />
           <Route path="/shows/manage" element={<RequireAuth><Layout><ShowManagePage /></Layout></RequireAuth>} />
           <Route path="/profile" element={<RequireAuth><Layout><ProfilePage /></Layout></RequireAuth>} />
           <Route path="/transactions" element={<RequireAuth><Layout><TransactionsPage /></Layout></RequireAuth>} />
