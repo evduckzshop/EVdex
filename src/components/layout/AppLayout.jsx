@@ -13,18 +13,20 @@ const C = {
   green: '#10B981', red: '#F87171', amber: '#F59E0B',
 }
 
-// All nav items — admin-only ones are flagged
-const NAV_ITEMS = [
-  { group: 'Main', items: [
-    { id: 'home',    label: 'Home',    path: '/',         adminOnly: false },
-    { id: 'profile', label: 'Profile', path: '/profile',  adminOnly: false },
-  ]},
+// Standalone nav items (always visible, not in a group)
+const STANDALONE_ITEMS = [
+  { id: 'home',     label: 'Home',     path: '/',          adminOnly: false },
+  { id: 'profile',  label: 'Profile',  path: '/profile',   adminOnly: false },
+]
+
+// Collapsible nav groups
+const NAV_GROUPS = [
   { group: 'Operations', items: [
-    { id: 'sales',     label: 'Sales',     path: '/sales',     adminOnly: false },
-    { id: 'buys',      label: 'Buys',      path: '/buys',      adminOnly: false },
-    { id: 'inventory', label: 'Inventory', path: '/inventory', adminOnly: false },
-    { id: 'shows',     label: 'Shows',     path: '/shows/manage', adminOnly: false },
-    { id: 'expenses',  label: 'Expenses',  path: '/expenses',  adminOnly: false },
+    { id: 'sales',     label: 'Sales',     path: '/sales',        adminOnly: false },
+    { id: 'buys',      label: 'Buys',      path: '/buys',         adminOnly: false },
+    { id: 'inventory', label: 'Inventory',  path: '/inventory',    adminOnly: false },
+    { id: 'shows',     label: 'Shows',      path: '/shows/manage', adminOnly: false },
+    { id: 'expenses',  label: 'Expenses',   path: '/expenses',     adminOnly: false },
   ]},
   { group: 'Financials', items: [
     { id: 'transactions', label: 'Transactions', path: '/transactions', adminOnly: false },
@@ -32,19 +34,20 @@ const NAV_ITEMS = [
     { id: 'pl',       label: 'Profit & Loss', path: '/pl',       adminOnly: true },
   ]},
   { group: 'Reporting', items: [
-    { id: 'reporting', label: 'General Reporting', path: '/reporting', adminOnly: true },
-    { id: 'compare',   label: 'Show Comparison',  path: '/shows/compare', adminOnly: true },
-    { id: 'export',    label: 'Export',        path: '/export',    adminOnly: true },
+    { id: 'reporting', label: 'General Reporting', path: '/reporting',      adminOnly: true },
+    { id: 'compare',   label: 'Show Comparison',  path: '/shows/compare',  adminOnly: true },
+    { id: 'export',    label: 'Export',            path: '/export',         adminOnly: true },
   ]},
   { group: 'Team', items: [
-    { id: 'employees', label: 'Team',   path: '/employees', adminOnly: true },
+    { id: 'employees', label: 'Team',         path: '/employees', adminOnly: true },
     { id: 'activity',  label: 'Activity Log', path: '/activity',  adminOnly: true },
   ]},
-  { group: 'Other', items: [
-    { id: 'contacts', label: 'Contacts', path: '/contacts', adminOnly: false },
-    { id: 'settings', label: 'Settings', path: '/settings', adminOnly: true },
-    { id: 'pong',     label: 'Pong',     path: '/pong',     adminOnly: false },
-  ]},
+]
+
+// Standalone items at the bottom (below groups)
+const BOTTOM_STANDALONE = [
+  { id: 'contacts', label: 'Contacts', path: '/contacts', adminOnly: false },
+  { id: 'settings', label: 'Settings', path: '/settings', adminOnly: true },
 ]
 
 const BOTTOM_TABS = [
@@ -58,9 +61,14 @@ const BOTTOM_TABS = [
 export default function AppLayout({ children }) {
   const { profile, isAdmin } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState({ Operations: true, Financials: true, Reporting: true, Team: true })
   const navigate = useNavigate()
   const location = useLocation()
   const { navTo, navBack } = useNav()
+
+  function toggleGroup(group) {
+    setCollapsed(prev => ({ ...prev, [group]: !prev[group] }))
+  }
 
   // Close sidebar on route change
   useEffect(() => { setSidebarOpen(false) }, [location.pathname])
@@ -140,38 +148,113 @@ export default function AppLayout({ children }) {
           </div>
         </div>
 
-        {/* Nav groups */}
-        {NAV_ITEMS.map(group => {
+        {/* Top standalone items */}
+        <div style={{ padding: '6px 10px 2px' }}>
+          {STANDALONE_ITEMS.filter(item => !item.adminOnly || isAdmin).map(item => (
+            <button
+              key={item.id}
+              onClick={() => navTo(item.path)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 9,
+                width: '100%', padding: '9px 6px', borderRadius: 9,
+                border: 'none', cursor: 'pointer', marginBottom: 1,
+                background: location.pathname === item.path ? 'rgba(37,99,235,.12)' : 'transparent',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{
+                fontSize: 13, fontWeight: location.pathname === item.path ? 600 : 500,
+                color: location.pathname === item.path ? C.accent2 : C.text2,
+              }}>
+                {item.label}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Collapsible nav groups */}
+        {NAV_GROUPS.map(group => {
           const visibleItems = group.items.filter(item => !item.adminOnly || isAdmin)
           if (!visibleItems.length) return null
+          const isOpen = !collapsed[group.group]
+          const hasActive = visibleItems.some(item => location.pathname === item.path)
           return (
-            <div key={group.group} style={{ padding: '8px 10px 2px' }}>
-              <div style={{ fontSize: 9, fontWeight: 600, color: C.text3, letterSpacing: '.1em', textTransform: 'uppercase', padding: '0 6px', marginBottom: 3 }}>
-                {group.group}
-              </div>
-              {visibleItems.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => navTo(item.path)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 9,
-                    width: '100%', padding: '8px 6px', borderRadius: 9,
-                    border: 'none', cursor: 'pointer', marginBottom: 1,
-                    background: location.pathname === item.path ? 'rgba(37,99,235,.12)' : 'transparent',
-                    textAlign: 'left',
-                  }}
-                >
-                  <div style={{
-                    fontSize: 13, fontWeight: location.pathname === item.path ? 600 : 500,
-                    color: location.pathname === item.path ? C.accent2 : C.text2,
-                  }}>
-                    {item.label}
+            <div key={group.group} style={{ padding: '2px 10px 0' }}>
+              <button
+                onClick={() => toggleGroup(group.group)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: '100%', padding: '7px 6px', borderRadius: 9,
+                  border: 'none', cursor: 'pointer',
+                  background: hasActive && !isOpen ? 'rgba(37,99,235,.06)' : 'transparent',
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: hasActive ? C.accent2 : C.text3, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                    {group.group}
                   </div>
-                </button>
-              ))}
+                  {hasActive && !isOpen && (
+                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.accent2 }} />
+                  )}
+                </div>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .2s ease' }}>
+                  <path d="M3 4.5l3 3 3-3" stroke={C.text3} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <div style={{
+                overflow: 'hidden',
+                maxHeight: isOpen ? visibleItems.length * 38 : 0,
+                transition: 'max-height .25s ease',
+              }}>
+                {visibleItems.map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => navTo(item.path)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 9,
+                      width: '100%', padding: '8px 6px 8px 14px', borderRadius: 9,
+                      border: 'none', cursor: 'pointer', marginBottom: 1,
+                      background: location.pathname === item.path ? 'rgba(37,99,235,.12)' : 'transparent',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{
+                      fontSize: 13, fontWeight: location.pathname === item.path ? 600 : 500,
+                      color: location.pathname === item.path ? C.accent2 : C.text2,
+                    }}>
+                      {item.label}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           )
         })}
+
+        {/* Bottom standalone items */}
+        <div style={{ padding: '6px 10px 2px', borderTop: `1px solid ${C.border}`, marginTop: 4 }}>
+          {BOTTOM_STANDALONE.filter(item => !item.adminOnly || isAdmin).map(item => (
+            <button
+              key={item.id}
+              onClick={() => navTo(item.path)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 9,
+                width: '100%', padding: '9px 6px', borderRadius: 9,
+                border: 'none', cursor: 'pointer', marginBottom: 1,
+                background: location.pathname === item.path ? 'rgba(37,99,235,.12)' : 'transparent',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{
+                fontSize: 13, fontWeight: location.pathname === item.path ? 600 : 500,
+                color: location.pathname === item.path ? C.accent2 : C.text2,
+              }}>
+                {item.label}
+              </div>
+            </button>
+          ))}
+        </div>
 
         {/* Sign out */}
         <div style={{ marginTop: 'auto', padding: '12px 10px 24px', borderTop: `1px solid ${C.border}` }}>
