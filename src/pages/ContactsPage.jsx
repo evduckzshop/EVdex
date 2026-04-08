@@ -165,7 +165,7 @@ export function ContactDetailPage() {
   const { rows: buys, fetch: fetchBuys } = useBuys()
   const { isAdmin } = useAuth()
   const navigate = useNavigate()
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteStep, setDeleteStep] = useState(0) // 0=idle, 1=first confirm, 2=second confirm (linked accounts only)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
 
@@ -179,15 +179,31 @@ export function ContactDetailPage() {
 
   useEffect(() => { fetch(); fetchSales(); fetchBuys() }, [])
 
-  // Check if this contact is linked to a customer account
+  // Check if this contact is linked to a customer account + invite status
   useEffect(() => {
     if (!id) return
-    supabase.from('customers')
-      .select('id, display_name, email, created_at')
-      .eq('contact_id', id)
-      .maybeSingle()
-      .then(({ data }) => setCustomerLink(data || false))
-      .catch(() => setCustomerLink(false))
+    async function checkCustomerStatus() {
+      try {
+        const { data: customer } = await supabase.from('customers')
+          .select('id, display_name, email, created_at')
+          .eq('contact_id', id)
+          .maybeSingle()
+
+        if (!customer) { setCustomerLink(false); return }
+
+        // Check if the invite has been accepted (user has logged in)
+        const { data: invite } = await supabase.from('invites')
+          .select('accepted')
+          .eq('email', customer.email)
+          .eq('role', 'customer')
+          .maybeSingle()
+
+        setCustomerLink({ ...customer, accepted: invite?.accepted || false })
+      } catch {
+        setCustomerLink(false)
+      }
+    }
+    checkCustomerStatus()
   }, [id])
 
   const contact = rows.find(r => r.id === id)
@@ -206,15 +222,34 @@ export function ContactDetailPage() {
   const avatarColor = AVATAR_COLORS[((contact.name || 'A').charCodeAt(0)) % AVATAR_COLORS.length]
 
   async function handleDelete() {
-    if (!confirmDelete) { setConfirmDelete(true); return }
+    if (deleteStep === 0) {
+      // First tap — ask for confirmation
+      setDeleteStep(1)
+      return
+    }
+    if (deleteStep === 1 && customerLink) {
+      // Has linked customer — require second confirmation
+      setDeleteStep(2)
+      return
+    }
+    // Final confirmation — proceed with delete
     setDeleting(true)
     try {
+      if (customerLink) {
+        // Delete customer badges, reward events, customer record, then the auth user
+        const custId = customerLink.id
+        await supabase.from('customer_badges').delete().eq('customer_id', custId)
+        await supabase.from('reward_events').delete().eq('customer_id', custId)
+        await supabase.from('customers').delete().eq('id', custId)
+        // Note: the auth user + profile will remain (no service role access from client)
+        // but the customer record and all rewards data is wiped
+      }
       await remove(id)
       navigate('/contacts', { replace: true })
     } catch (e) {
       setError('Error deleting: ' + e.message)
       setDeleting(false)
-      setConfirmDelete(false)
+      setDeleteStep(0)
     }
   }
 
@@ -308,17 +343,17 @@ export function ContactDetailPage() {
 
       {/* Customer Portal Status */}
       {isAdmin && customerLink !== null && (
-        <div style={{ background: C.surface, borderRadius: 14, padding: '12px 14px', marginBottom: 12, border: `1px solid ${customerLink ? 'rgba(16,185,129,.2)' : C.border}` }}>
+        <div style={{ background: C.surface, borderRadius: 14, padding: '12px 14px', marginBottom: 12, border: `1px solid ${!customerLink ? C.border : customerLink.accepted ? 'rgba(16,185,129,.2)' : 'rgba(245,158,11,.2)'}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: customerLink ? C.green : C.text3 }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: !customerLink ? C.text3 : customerLink.accepted ? C.green : C.amber }} />
               <div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
-                  {customerLink ? 'Customer Portal Active' : 'No Portal Account'}
+                  {!customerLink ? 'No Portal Account' : customerLink.accepted ? 'Customer Portal Active' : 'Invite Pending'}
                 </div>
                 {customerLink && (
                   <div style={{ fontSize: 10, color: C.text3, marginTop: 1 }}>
-                    {customerLink.email} · Joined {new Date(customerLink.created_at).toLocaleDateString()}
+                    {customerLink.email} · {customerLink.accepted ? `Joined ${new Date(customerLink.created_at).toLocaleDateString()}` : 'Waiting for customer to accept'}
                   </div>
                 )}
               </div>
@@ -415,16 +450,31 @@ export function ContactDetailPage() {
       </button>
 
       {isAdmin && (
-        <button onClick={handleDelete} disabled={deleting} style={{
-          width: '100%', padding: 13, borderRadius: 12,
-          background: confirmDelete ? '#DC2626' : 'rgba(248,113,113,.08)',
-          border: confirmDelete ? 'none' : '1px solid rgba(248,113,113,.15)',
-          fontSize: 14, fontWeight: 600,
-          color: confirmDelete ? '#fff' : C.red,
-          cursor: deleting ? 'not-allowed' : 'pointer',
-        }}>
-          {deleting ? 'Deleting…' : confirmDelete ? 'Tap again to confirm delete' : 'Delete contact'}
-        </button>
+        <>
+          <button onClick={handleDelete} disabled={deleting} style={{
+            width: '100%', padding: 13, borderRadius: 12,
+            background: deleteStep > 0 ? '#DC2626' : 'rgba(248,113,113,.08)',
+            border: deleteStep > 0 ? 'none' : '1px solid rgba(248,113,113,.15)',
+            fontSize: 14, fontWeight: 600,
+            color: deleteStep > 0 ? '#fff' : C.red,
+            cursor: deleting ? 'not-allowed' : 'pointer',
+          }}>
+            {deleting ? 'Deleting…'
+              : deleteStep === 2 ? 'This will delete their rewards account. Tap to confirm.'
+              : deleteStep === 1 && customerLink ? 'This contact has a linked portal account. Tap to continue.'
+              : deleteStep === 1 ? 'Tap again to confirm delete'
+              : 'Delete contact'}
+          </button>
+          {deleteStep > 0 && (
+            <button onClick={() => setDeleteStep(0)} style={{
+              width: '100%', padding: 11, borderRadius: 12, background: 'transparent',
+              border: `1px solid ${C.border2}`, fontSize: 13, fontWeight: 500,
+              color: C.text2, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8,
+            }}>
+              Cancel
+            </button>
+          )}
+        </>
       )}
       <div style={{ height: 20 }} />
     </div>
