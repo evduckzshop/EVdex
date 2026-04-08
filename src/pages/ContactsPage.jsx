@@ -179,31 +179,15 @@ export function ContactDetailPage() {
 
   useEffect(() => { fetch(); fetchSales(); fetchBuys() }, [])
 
-  // Check if this contact is linked to a customer account + invite status
+  // Check if this contact is linked to a customer account
   useEffect(() => {
     if (!id) return
-    async function checkCustomerStatus() {
-      try {
-        const { data: customer } = await supabase.from('customers')
-          .select('id, display_name, email, created_at')
-          .eq('contact_id', id)
-          .maybeSingle()
-
-        if (!customer) { setCustomerLink(false); return }
-
-        // Check if the invite has been accepted (user has logged in)
-        const { data: invite } = await supabase.from('invites')
-          .select('accepted')
-          .eq('email', customer.email)
-          .eq('role', 'customer')
-          .maybeSingle()
-
-        setCustomerLink({ ...customer, accepted: invite?.accepted || false })
-      } catch {
-        setCustomerLink(false)
-      }
-    }
-    checkCustomerStatus()
+    supabase.from('customers')
+      .select('id, display_name, email, created_at, accepted_at')
+      .eq('contact_id', id)
+      .maybeSingle()
+      .then(({ data }) => setCustomerLink(data || false))
+      .catch(() => setCustomerLink(false))
   }, [id])
 
   const contact = rows.find(r => r.id === id)
@@ -338,17 +322,17 @@ export function ContactDetailPage() {
 
       {/* Customer Portal Status */}
       {isAdmin && customerLink !== null && (
-        <div style={{ background: C.surface, borderRadius: 14, padding: '12px 14px', marginBottom: 12, border: `1px solid ${!customerLink ? C.border : customerLink.accepted ? 'rgba(16,185,129,.2)' : 'rgba(245,158,11,.2)'}` }}>
+        <div style={{ background: C.surface, borderRadius: 14, padding: '12px 14px', marginBottom: 12, border: `1px solid ${!customerLink ? C.border : customerLink.accepted_at ? 'rgba(16,185,129,.2)' : 'rgba(245,158,11,.2)'}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: !customerLink ? C.text3 : customerLink.accepted ? C.green : C.amber }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: !customerLink ? C.text3 : customerLink.accepted_at ? C.green : C.amber }} />
               <div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
-                  {!customerLink ? 'No Portal Account' : customerLink.accepted ? 'Customer Portal Active' : 'Invite Pending'}
+                  {!customerLink ? 'No Portal Account' : customerLink.accepted_at ? 'Customer Portal Active' : 'Invite Pending'}
                 </div>
                 {customerLink && (
                   <div style={{ fontSize: 10, color: C.text3, marginTop: 1 }}>
-                    {customerLink.email} · {customerLink.accepted ? `Joined ${new Date(customerLink.created_at).toLocaleDateString()}` : 'Waiting for customer to accept'}
+                    {customerLink.email} · {customerLink.accepted_at ? `Active since ${new Date(customerLink.accepted_at).toLocaleDateString()}` : 'Waiting for customer to accept'}
                   </div>
                 )}
               </div>

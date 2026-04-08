@@ -26,6 +26,12 @@ export default function PortalDashboard() {
 
   async function loadDashboard() {
     try {
+      // Mark account as accepted on first portal visit
+      await supabase.from('customers')
+        .update({ accepted_at: new Date().toISOString() })
+        .eq('id', user.id)
+        .is('accepted_at', null)
+
       const [tierRes, badgeRes, eventsRes] = await Promise.all([
         supabase.from('customer_tier').select('*').eq('customer_id', user.id).single(),
         supabase.from('customer_badges')
