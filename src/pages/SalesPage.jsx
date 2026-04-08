@@ -87,7 +87,7 @@ export default function SalesPage() {
       <AutocompleteInput contacts={contacts} value={buyer} onSelect={setBuyer} placeholder="Buyer name or search contacts…" />
 
       <Label>Payment method</Label>
-      <ChipGroup options={['Cash','Venmo','Zelle','Card']} value={payment} onChange={setPayment} color="green" />
+      <ChipGroup options={['Cash','Venmo','Zelle','Card','Other']} value={payment} onChange={setPayment} color="green" />
 
       <Label>Logged by</Label>
       <div style={{ fontSize: 13, color: C.text2, padding: '8px 0' }}>{profile?.full_name}</div>

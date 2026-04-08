@@ -7,7 +7,75 @@ import {
   CtaButton, GhostButton, Toast, RecordCard,
 } from '../components/ui/FormComponents'
 
-// ── EXPENSES PAGE ────────────────────────────────────────────────
+// ── US CITIES AUTOCOMPLETE ───────────────────────────────────────
+const US_CITIES = [
+  'New York, NY','Los Angeles, CA','Chicago, IL','Houston, TX','Phoenix, AZ',
+  'Philadelphia, PA','San Antonio, TX','San Diego, CA','Dallas, TX','San Jose, CA',
+  'Austin, TX','Jacksonville, FL','Fort Worth, TX','Columbus, OH','Charlotte, NC',
+  'Indianapolis, IN','San Francisco, CA','Seattle, WA','Denver, CO','Washington, DC',
+  'Nashville, TN','Oklahoma City, OK','El Paso, TX','Boston, MA','Portland, OR',
+  'Las Vegas, NV','Memphis, TN','Louisville, KY','Baltimore, MD','Milwaukee, WI',
+  'Albuquerque, NM','Tucson, AZ','Fresno, CA','Mesa, AZ','Sacramento, CA',
+  'Atlanta, GA','Kansas City, MO','Omaha, NE','Colorado Springs, CO','Raleigh, NC',
+  'Virginia Beach, VA','Long Beach, CA','Miami, FL','Oakland, CA','Minneapolis, MN',
+  'Tampa, FL','Tulsa, OK','Arlington, TX','New Orleans, LA','Cleveland, OH',
+  'Orlando, FL','St. Louis, MO','Pittsburgh, PA','Cincinnati, OH','Detroit, MI',
+  'Richmond, VA','Norfolk, VA','Springfield, VA','Springfield, IL','Springfield, MO',
+  'Chantilly, VA','Fairfax, VA','Manassas, VA','Fredericksburg, VA','Alexandria, VA',
+  'Tysons, VA','Sterling, VA','Woodbridge, VA','Dulles, VA','Herndon, VA',
+  'Annapolis, MD','Columbia, MD','Bowie, MD','Frederick, MD','Silver Spring, MD',
+]
+
+function LocationInput({ value, onChange }) {
+  const [input, setInput] = useState(value || '')
+  const [open, setOpen] = useState(false)
+
+  const filtered = input.length > 0
+    ? US_CITIES.filter(c => c.toLowerCase().includes(input.toLowerCase())).slice(0, 6)
+    : []
+
+  function pick(city) {
+    setInput(city)
+    onChange(city)
+    setOpen(false)
+  }
+
+  function handleChange(val) {
+    setInput(val)
+    onChange(val)
+    setOpen(true)
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <Input
+        value={input}
+        onChange={e => handleChange(e.target.value)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="City, State"
+      />
+      {open && filtered.length > 0 && (
+        <div style={{
+          position: 'absolute', width: '100%', zIndex: 20, marginTop: 4,
+          background: C.surface2, border: `1px solid ${C.border2}`, borderRadius: 11, overflow: 'hidden',
+        }}>
+          {filtered.map(city => (
+            <div
+              key={city}
+              onMouseDown={() => pick(city)}
+              style={{ padding: '10px 13px', fontSize: 13, color: C.text, cursor: 'pointer', borderBottom: `1px solid ${C.border}` }}
+            >
+              {city}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── EXPENSES PAGE ���──────────────────────────────────────────────��
 export function ExpensesPage() {
   const { insert, rows, fetch, loading } = useExpenses()
   const { profile } = useAuth()
@@ -104,9 +172,11 @@ export function ShowsPage() {
       <Toast message={msg.text} type={msg.type} />
       <Label top={false}>Show name</Label>
       <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Springfield Card Show" />
+      <Label>Date</Label>
+      <Input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ color: C.text2 }} />
+      <Label>Location</Label>
+      <LocationInput value={location} onChange={setLocation} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div><Label>Date</Label><Input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ color: C.text2 }} /></div>
-        <div><Label>Location</Label><Input value={location} onChange={e => setLocation(e.target.value)} placeholder="City, State" /></div>
         <div><Label>Table fee ($)</Label><Input type="number" value={fee} onChange={e => setFee(e.target.value)} placeholder="0.00" /></div>
         <div><Label>Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Crowd, vibe…" /></div>
       </div>

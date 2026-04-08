@@ -93,7 +93,7 @@ export default function BuysPage() {
       )}
 
       <Label>Description</Label>
-      <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Binder lot — misc holos ×80" />
+      <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Singles Lot from evduckzshop" />
 
       {!isLot && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
