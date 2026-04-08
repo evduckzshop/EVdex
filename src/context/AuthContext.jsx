@@ -26,6 +26,8 @@ export function AuthProvider({ children }) {
       } else {
         setLoading(false)
       }
+    }).catch(() => {
+      setLoading(false)
     })
 
     // Listen for auth changes
