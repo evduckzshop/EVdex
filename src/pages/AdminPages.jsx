@@ -96,56 +96,124 @@ export function CashFlowPage() {
 }
 
 // ── P&L ─────────────────────────────────────────────────────────
-const PL_DATA = {
-  overall:      { rev: 8640, cogs: 4820, fees: 270, exp: 302, label: 'Overall' },
-  nova:         { rev: 3200, cogs: 1650, fees: 120, exp: 80,  label: 'NoVA Pokémon Expo' },
-  dc:           { rev: 2840, cogs: 1420, fees: 150, exp: 65,  label: 'DC Card Con' },
-  springfield:  { rev: 1200, cogs: 600,  fees: 80,  exp: 40,  label: 'Springfield Show' },
-}
+const TIME_RANGES = [
+  { key: 'all', label: 'All time', days: null },
+  { key: '7d', label: '7 days', days: 7 },
+  { key: '30d', label: '30 days', days: 30 },
+  { key: '90d', label: '90 days', days: 90 },
+  { key: '365d', label: '1 year', days: 365 },
+]
 
 export function PLPage() {
-  const [key, setKey] = useState('overall')
-  const d = PL_DATA[key]
-  const gross = d.rev - d.cogs
-  const net = gross - d.fees - d.exp
-  const gm = d.rev > 0 ? ((gross / d.rev) * 100).toFixed(1) : 0
-  const nm = d.rev > 0 ? ((net / d.rev) * 100).toFixed(1) : 0
+  const [range, setRange] = useState('all')
+  const [showFilter, setShowFilter] = useState('overall')
+  const [data, setData] = useState({ sales: [], buys: [], expenses: [], shows: [] })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => { loadPL() }, [range])
+
+  async function loadPL() {
+    setLoading(true)
+    setError(null)
+    try {
+      const rangeDays = TIME_RANGES.find(r => r.key === range)?.days
+      const ts = rangeDays ? new Date(Date.now() - rangeDays * 86400000).toISOString() : null
+
+      let salesQ = supabase.from('sales').select('sale_price,show_id')
+      let buysQ = supabase.from('buys').select('amount_paid,show_id')
+      let expQ = supabase.from('expenses').select('amount,show_id')
+      let showsQ = supabase.from('shows').select('id,name,table_fee')
+
+      if (ts) {
+        salesQ = salesQ.gte('created_at', ts)
+        buysQ = buysQ.gte('created_at', ts)
+        expQ = expQ.gte('created_at', ts)
+      }
+
+      const [s, b, e, sh] = await Promise.all([salesQ, buysQ, expQ, showsQ])
+      if (s.error) throw s.error
+      if (b.error) throw b.error
+      if (e.error) throw e.error
+      if (sh.error) throw sh.error
+      setData({ sales: s.data || [], buys: b.data || [], expenses: e.data || [], shows: sh.data || [] })
+    } catch (e) {
+      setError(e.message || 'Failed to load P&L data')
+      console.error('PLPage load error:', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Filter by show
+  const filteredSales = showFilter === 'overall' ? data.sales : data.sales.filter(r => r.show_id === showFilter)
+  const filteredBuys = showFilter === 'overall' ? data.buys : data.buys.filter(r => r.show_id === showFilter)
+  const filteredExp = showFilter === 'overall' ? data.expenses : data.expenses.filter(r => r.show_id === showFilter)
+  const filteredFees = showFilter === 'overall' ? data.shows : data.shows.filter(r => r.id === showFilter)
+
+  const rev = filteredSales.reduce((s, r) => s + Number(r.sale_price), 0)
+  const cogs = filteredBuys.reduce((s, r) => s + Number(r.amount_paid), 0)
+  const fees = filteredFees.reduce((s, r) => s + Number(r.table_fee || 0), 0)
+  const exp = filteredExp.reduce((s, r) => s + Number(r.amount), 0)
+  const gross = rev - cogs
+  const net = gross - fees - exp
+  const gm = rev > 0 ? ((gross / rev) * 100).toFixed(1) : '0'
+  const nm = rev > 0 ? ((net / rev) * 100).toFixed(1) : '0'
+  const filterLabel = showFilter === 'overall' ? 'Overall' : (data.shows.find(s => s.id === showFilter)?.name || 'Show')
 
   return (
     <div style={{ paddingTop: 12 }}>
       <div style={{ background: 'linear-gradient(135deg,#1E3A8A,#1E293B)', borderRadius: 18, padding: 18, marginBottom: 12 }}>
         <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.5)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Profit &amp; Loss</div>
-        <div style={{ fontSize: 28, fontWeight: 700, color: C.green, letterSpacing: -1, margin: '4px 0 2px' }}>${net.toLocaleString()}</div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>Net profit · {d.label}</div>
+        <div style={{ fontSize: 28, fontWeight: 700, color: net >= 0 ? C.green : C.red, letterSpacing: -1, margin: '4px 0 2px' }}>{net >= 0 ? '' : '-'}${Math.abs(net).toLocaleString()}</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>Net profit · {filterLabel}</div>
       </div>
 
-      <div style={sectionHd}>Filter by show</div>
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 14, paddingBottom: 2 }}>
-        {Object.entries(PL_DATA).map(([k, v]) => (
-          <button key={k} onClick={() => setKey(k)} style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: `1px solid ${k === key ? 'rgba(37,99,235,.4)' : C.border2}`, background: k === key ? 'rgba(37,99,235,.2)' : C.surface, color: k === key ? C.accent2 : C.text2, whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
-            {v.label}
-          </button>
-        ))}
-      </div>
+      {loading ? <div style={{ textAlign: 'center', color: C.text3, padding: 24 }}>Loading…</div> : error ? (
+        <div style={{ background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.2)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.red }}>{error}</div>
+      ) : (
+        <>
+          <div style={sectionHd}>Time period</div>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 14, paddingBottom: 2 }}>
+            {TIME_RANGES.map(r => (
+              <button key={r.key} onClick={() => setRange(r.key)} style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: `1px solid ${r.key === range ? 'rgba(37,99,235,.4)' : C.border2}`, background: r.key === range ? 'rgba(37,99,235,.2)' : C.surface, color: r.key === range ? C.accent2 : C.text2, whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                {r.label}
+              </button>
+            ))}
+          </div>
 
-      <div style={sectionHd}>Income statement</div>
-      <div style={rcard}>
-        <div style={rrow}><div style={{ fontSize: 13, color: C.text2 }}>Revenue (sales)</div><div style={{ fontSize: 13, fontWeight: 600, color: C.green }}>${d.rev.toLocaleString()}</div></div>
-        <div style={rrow}><div style={{ fontSize: 13, color: C.text3, paddingLeft: 12 }}>— Cost of goods sold</div><div style={{ fontSize: 13, fontWeight: 600, color: C.red }}>(${d.cogs.toLocaleString()})</div></div>
-        <div style={rrow}><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Gross profit</div><div style={{ fontSize: 13, fontWeight: 600, color: C.green }}>${gross.toLocaleString()}</div></div>
-        <div style={{ height: 1, background: C.border2, margin: '4px 0' }} />
-        <div style={rrow}><div style={{ fontSize: 13, color: C.text3, paddingLeft: 12 }}>— Show fees</div><div style={{ fontSize: 13, fontWeight: 600, color: C.red }}>(${d.fees.toLocaleString()})</div></div>
-        <div style={rrow}><div style={{ fontSize: 13, color: C.text3, paddingLeft: 12 }}>— Expenses</div><div style={{ fontSize: 13, fontWeight: 600, color: C.red }}>(${d.exp.toLocaleString()})</div></div>
-        <div style={{ height: 1, background: C.border2, margin: '4px 0' }} />
-        <div style={rrowLast}><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Net profit</div><div style={{ fontSize: 16, fontWeight: 700, color: C.green }}>${net.toLocaleString()}</div></div>
-      </div>
+          <div style={sectionHd}>Filter by show</div>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 14, paddingBottom: 2 }}>
+            <button onClick={() => setShowFilter('overall')} style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: `1px solid ${showFilter === 'overall' ? 'rgba(245,158,11,.4)' : C.border2}`, background: showFilter === 'overall' ? 'rgba(245,158,11,.15)' : C.surface, color: showFilter === 'overall' ? C.amber : C.text2, whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+              Overall
+            </button>
+            {data.shows.map(s => (
+              <button key={s.id} onClick={() => setShowFilter(s.id)} style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: `1px solid ${showFilter === s.id ? 'rgba(245,158,11,.4)' : C.border2}`, background: showFilter === s.id ? 'rgba(245,158,11,.15)' : C.surface, color: showFilter === s.id ? C.amber : C.text2, whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                {s.name}
+              </button>
+            ))}
+          </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <Stat label="Gross margin" val={`${gm}%`} color={C.green} />
-        <Stat label="Net margin" val={`${nm}%`} color={C.green} />
-        <Stat label="Total expenses" val={`$${(d.fees+d.exp).toLocaleString()}`} color={C.amber} />
-        <Stat label="COGS" val={`$${d.cogs.toLocaleString()}`} color={C.red} />
-      </div>
+          <div style={sectionHd}>Income statement</div>
+          <div style={rcard}>
+            <div style={rrow}><div style={{ fontSize: 13, color: C.text2 }}>Revenue (sales)</div><div style={{ fontSize: 13, fontWeight: 600, color: C.green }}>${rev.toLocaleString()}</div></div>
+            <div style={rrow}><div style={{ fontSize: 13, color: C.text3, paddingLeft: 12 }}>— Cost of goods (buys)</div><div style={{ fontSize: 13, fontWeight: 600, color: C.red }}>(${cogs.toLocaleString()})</div></div>
+            <div style={rrow}><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Gross profit</div><div style={{ fontSize: 13, fontWeight: 600, color: gross >= 0 ? C.green : C.red }}>${gross.toLocaleString()}</div></div>
+            <div style={{ height: 1, background: C.border2, margin: '4px 0' }} />
+            <div style={rrow}><div style={{ fontSize: 13, color: C.text3, paddingLeft: 12 }}>— Show fees</div><div style={{ fontSize: 13, fontWeight: 600, color: C.red }}>(${fees.toLocaleString()})</div></div>
+            <div style={rrow}><div style={{ fontSize: 13, color: C.text3, paddingLeft: 12 }}>— Expenses</div><div style={{ fontSize: 13, fontWeight: 600, color: C.red }}>(${exp.toLocaleString()})</div></div>
+            <div style={{ height: 1, background: C.border2, margin: '4px 0' }} />
+            <div style={rrowLast}><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Net profit</div><div style={{ fontSize: 16, fontWeight: 700, color: net >= 0 ? C.green : C.red }}>{net >= 0 ? '' : '-'}${Math.abs(net).toLocaleString()}</div></div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <Stat label="Gross margin" val={`${gm}%`} color={C.green} />
+            <Stat label="Net margin" val={`${nm}%`} color={C.green} />
+            <Stat label="Total expenses" val={`$${(fees + exp).toLocaleString()}`} color={C.amber} />
+            <Stat label="COGS" val={`$${cogs.toLocaleString()}`} color={C.red} />
+          </div>
+        </>
+      )}
     </div>
   )
 }

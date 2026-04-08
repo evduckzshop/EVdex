@@ -182,10 +182,13 @@ export function ShowsPage() {
       </div>
       <CtaButton onClick={handleSave} disabled={saving} color="orange">{saving ? 'Saving…' : 'Add show'}</CtaButton>
       <GhostButton onClick={() => navigate('/')}>Cancel</GhostButton>
-      <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', margin: '20px 0 8px' }}>Show history</div>
+      <div onClick={() => navigate('/shows/manage')} style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', margin: '20px 0 8px', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
+        Show history
+        <span style={{ fontSize: 11, color: '#3B82F6', fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>View all →</span>
+      </div>
       {loading ? <div style={{ textAlign: 'center', color: C.text3, padding: 20 }}>Loading…</div>
-        : rows.map(r => (
-          <div key={r.id} style={{ background: C.surface, borderRadius: 14, padding: '13px 14px', marginBottom: 8, border: `1px solid ${C.border}` }}>
+        : rows.slice(0, 5).map(r => (
+          <div key={r.id} onClick={() => navigate(`/shows/manage?id=${r.id}`)} style={{ background: C.surface, borderRadius: 14, padding: '13px 14px', marginBottom: 8, border: `1px solid ${C.border}`, cursor: 'pointer' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{r.name}</div>

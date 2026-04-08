@@ -251,7 +251,7 @@ export default function AppLayout({ children }) {
 }
 
 function getPageTitle(path) {
-  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Shows', '/expenses': 'Expenses', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/export': 'Export CSV', '/employees': 'Employees', '/activity': 'Activity Log', '/contacts': 'Contacts', '/settings': 'Settings', '/profile': 'Profile' }
+  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Shows', '/shows/manage': 'Manage Shows', '/expenses': 'Expenses', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/export': 'Export CSV', '/employees': 'Employees', '/activity': 'Activity Log', '/contacts': 'Contacts', '/settings': 'Settings', '/profile': 'Profile' }
   return map[path] || 'EVdex'
 }
 

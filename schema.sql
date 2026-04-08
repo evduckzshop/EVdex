@@ -307,6 +307,9 @@ create policy "Admins can update any show"
 create policy "Creator can update their show"
   on public.shows for update using (created_by = auth.uid());
 
+create policy "Admins can delete shows"
+  on public.shows for delete using (public.is_admin());
+
 -- ── INVENTORY ─────────────────────────────────────────────────
 create policy "All authenticated users can read inventory"
   on public.inventory for select using (auth.uid() is not null);
