@@ -378,9 +378,22 @@ export function RecordCard({ item, amtColor, amt, meta }) {
 }
 
 export function AutocompleteInput({ contacts, value, onSelect, placeholder }) {
-  const [input, setInput] = useState('')
+  const [input, setInput] = useState(value || '')
   const [open, setOpen] = useState(false)
-  const [selected, setSelected] = useState(null)
+  const [selected, setSelected] = useState(() => {
+    if (value && contacts.length) return contacts.find(c => c.name === value) || null
+    return null
+  })
+
+  // Sync when value changes externally (e.g. edit mode)
+  useEffect(() => {
+    if (value && !selected) {
+      setInput(value)
+      const match = contacts.find(c => c.name === value)
+      if (match) setSelected(match)
+    }
+    if (!value && !selected) setInput('')
+  }, [value, contacts])
 
   const filtered = input.length > 0
     ? contacts.filter(c => (c.name || '').toLowerCase().includes(input.toLowerCase()))
@@ -395,6 +408,11 @@ export function AutocompleteInput({ contacts, value, onSelect, placeholder }) {
     setSelected(null)
     setInput('')
     onSelect('')
+  }
+  function handleInputChange(val) {
+    setInput(val)
+    setOpen(true)
+    onSelect(val)
   }
 
   if (selected) {
@@ -413,7 +431,7 @@ export function AutocompleteInput({ contacts, value, onSelect, placeholder }) {
     <div style={{ position: 'relative', marginTop: 8 }}>
       <input
         value={input}
-        onChange={e => { setInput(e.target.value); setOpen(true) }}
+        onChange={e => handleInputChange(e.target.value)}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder={placeholder || 'Type name or search contacts…'}

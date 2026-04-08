@@ -34,6 +34,7 @@ export default function BuysPage() {
   const [msg, setMsg] = useState({ text: '', type: '' })
 
   const isLot = buyType === 'Lot'
+  const isSlab = buyType === 'Slabs'
 
   useEffect(() => { fetch(); fetchContacts(); fetchShows() }, [])
 
@@ -77,8 +78,8 @@ export default function BuysPage() {
       const record = {
         description: desc.trim(),
         buy_type: buyType,
-        qty: isLot ? null : (parseInt(qty) || null),
-        condition: isLot ? null : condition,
+        qty: isLot ? null : isSlab ? null : (parseInt(qty) || null),
+        condition: isLot ? null : isSlab ? (qty ? `${qty} ${condition}` : condition) : condition,
         market_value: parseFloat(market) || null,
         amount_paid: parseFloat(paid),
         pct_of_market: parseFloat(pct) || null,
@@ -141,7 +142,23 @@ export default function BuysPage() {
       <Label>Description</Label>
       <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Singles Lot from evduckzshop" />
 
-      {!isLot && (
+      {isSlab && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div>
+            <Label>Company</Label>
+            <Select value={qty} onChange={e => setQty(e.target.value)}>
+              <option value="">Select...</option>
+              {['PSA','CGC','BGS','Other'].map(c => <option key={c}>{c}</option>)}
+            </Select>
+          </div>
+          <div>
+            <Label>Grade</Label>
+            <Input value={condition} onChange={e => setCondition(e.target.value)} placeholder="e.g. 10, 9.5" />
+          </div>
+        </div>
+      )}
+
+      {!isLot && !isSlab && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
             <Label>Qty</Label>
