@@ -5,8 +5,8 @@ import { useAuth } from '../../context/AuthContext'
 import { C, TIER_COLORS } from '../../components/layout/CustomerLayout'
 
 const TIER_ICONS = {
-  bronze:  '🦆',
-  silver:  '🪿',
+  bronze:  '🪿',
+  silver:  '🦆',
   gold:    '⭐',
   diamond: '💎',
 }
