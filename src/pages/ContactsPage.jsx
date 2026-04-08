@@ -124,8 +124,8 @@ export default function ContactsListPage() {
             const txCount = getTxData(r.id, r.name, sales, buys).count
             return (
               <div key={r.id} onClick={() => navigate(`/contacts/${r.id}`)} style={{ background: C.surface, borderRadius: 14, padding: '12px 13px', marginBottom: 8, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: AVATAR_COLORS[i % AVATAR_COLORS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                  {r.name?.[0]?.toUpperCase() ?? '?'}
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: r.avatar_url ? `url(${r.avatar_url}) center/cover no-repeat` : AVATAR_COLORS[i % AVATAR_COLORS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                  {!r.avatar_url && (r.name?.[0]?.toUpperCase() ?? '?')}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.name}{r.nickname ? <span style={{ fontWeight: 400, color: C.text3 }}> ({r.nickname})</span> : ''}</div>
@@ -264,8 +264,8 @@ export function ContactDetailPage() {
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg,#0f1a2a,#1E293B)', borderRadius: 18, padding: 18, marginBottom: 12, border: '1px solid rgba(37,99,235,.2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-            {contact.name?.[0]?.toUpperCase() ?? '?'}
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: contact.avatar_url ? `url(${contact.avatar_url}) center/cover no-repeat` : avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+            {!contact.avatar_url && (contact.name?.[0]?.toUpperCase() ?? '?')}
           </div>
           <div>
             <div style={{ fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: -0.5 }}>{contact.name}{contact.nickname ? <span style={{ fontSize: 14, fontWeight: 400, color: 'rgba(255,255,255,.45)' }}> ({contact.nickname})</span> : ''}</div>

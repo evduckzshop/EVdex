@@ -51,7 +51,7 @@ export default function PortalProfile() {
       setUploading(true)
       setAvatarMsg('')
       try {
-        await uploadAvatar(user.id, file, true)
+        await uploadAvatar(user.id, file)
         await refreshProfile()
         setAvatarMsg('Photo updated!')
         setTimeout(() => setAvatarMsg(''), 2000)

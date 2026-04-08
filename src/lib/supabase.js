@@ -92,7 +92,7 @@ export async function logActivity({ actionType, entityType, entityId, summary, b
 
 // ── Avatar upload helper ──────────────────────────────────────
 
-export async function uploadAvatar(userId, file, syncToContact = false) {
+export async function uploadAvatar(userId, file) {
   const ext = file.name.split('.').pop()
   const path = `${userId}/avatar.${ext}`
 
@@ -111,21 +111,8 @@ export async function uploadAvatar(userId, file, syncToContact = false) {
     .eq('id', userId)
   if (updateError) throw updateError
 
-  // If customer, also sync avatar to their linked contact
-  if (syncToContact) {
-    const { data: customer } = await supabase
-      .from('customers')
-      .select('contact_id')
-      .eq('id', userId)
-      .maybeSingle()
-
-    if (customer?.contact_id) {
-      await supabase
-        .from('contacts')
-        .update({ avatar_url: url })
-        .eq('id', customer.contact_id)
-    }
-  }
+  // Avatar sync to linked contact is handled by a database trigger
+  // (trg_sync_avatar_to_contact on profiles table)
 
   return url
 }
