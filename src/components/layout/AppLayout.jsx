@@ -117,7 +117,7 @@ export default function AppLayout({ children }) {
         </div>
 
         {/* Profile */}
-        <div style={{ padding: '4px 18px 14px', borderBottom: `1px solid ${C.border}` }}>
+        <div onClick={() => navTo('/profile')} style={{ padding: '4px 18px 14px', borderBottom: `1px solid ${C.border}`, cursor: 'pointer' }}>
           <div style={{
             width: 52, height: 52, borderRadius: '50%',
             background: profile?.avatar_url ? `url(${profile.avatar_url}) center/cover no-repeat` : 'linear-gradient(135deg, #2563EB, #7C3AED)',
