@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { NavigationProvider } from './context/NavigationContext'
 import { RequireAuth, RequireAdmin, AccessDenied, DeactivatedPage } from './components/auth/ProtectedRoute'
 import AppLayout from './components/layout/AppLayout'
 
@@ -55,6 +56,7 @@ function PublicOnlyRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <NavigationProvider>
       <AuthProvider>
         <Routes>
 
@@ -95,6 +97,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
+      </NavigationProvider>
     </BrowserRouter>
   )
 }

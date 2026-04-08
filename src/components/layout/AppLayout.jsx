@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useNav } from '../../context/NavigationContext'
 import { signOut } from '../../lib/supabase'
+import PageTransition from './PageTransition'
 
 const C = {
   bg: '#111318', surface: '#1E293B', surface2: '#162032', surface3: '#0F172A',
@@ -58,6 +60,7 @@ export default function AppLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
+  const { navTo, navBack } = useNav()
 
   // Close sidebar on route change
   useEffect(() => { setSidebarOpen(false) }, [location.pathname])
@@ -149,7 +152,7 @@ export default function AppLayout({ children }) {
               {visibleItems.map(item => (
                 <button
                   key={item.id}
-                  onClick={() => navigate(item.path)}
+                  onClick={() => navTo(item.path)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 9,
                     width: '100%', padding: '8px 6px', borderRadius: 9,
@@ -193,7 +196,7 @@ export default function AppLayout({ children }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {location.pathname !== '/' && (
-            <button onClick={() => navigate(-1)} style={{
+            <button onClick={() => navBack()} style={{
               width: 30, height: 30, borderRadius: 8, background: 'rgba(255,255,255,.06)',
               border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}>
@@ -223,8 +226,10 @@ export default function AppLayout({ children }) {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 14px 90px' }}>
-        {children}
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 14px 90px', position: 'relative' }}>
+        <PageTransition>
+          {children}
+        </PageTransition>
       </div>
 
       {/* Bottom nav */}
@@ -238,7 +243,7 @@ export default function AppLayout({ children }) {
           const active = location.pathname === tab.path
           const Icon = tab.icon
           return (
-            <button key={tab.id} onClick={() => navigate(tab.path)} style={{
+            <button key={tab.id} onClick={() => navTo(tab.path)} style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
               gap: 3, cursor: 'pointer', border: 'none', background: 'transparent', padding: '4px 2px 0',
             }}>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useNav } from '../context/NavigationContext'
 import { supabase, logActivity } from '../lib/supabase'
 import PullToRefresh from '../components/ui/PullToRefresh'
 
@@ -236,6 +237,7 @@ function ActivityDetail({ item, onClose, isAdmin, onDelete, navigate }) {
 export default function HomePage() {
   const { isAdmin, profile } = useAuth()
   const navigate = useNavigate()
+  const { navTo, navFade } = useNav()
   const [stats, setStats] = useState({ todaySales: 0, todayBuys: 0, todayExpenses: 0, txCount: 0, weekSales: 0, weekBuys: 0 })
   const [activity, setActivity] = useState([])
   const [shows, setShows] = useState([])
@@ -443,7 +445,7 @@ export default function HomePage() {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(QUICK_ACTIONS.length, 4)},1fr)`, gap: 8, marginBottom: 18 }}>
         {QUICK_ACTIONS.map(a => (
-          <div key={a.label} onClick={() => navigate(a.path)} style={{ background: C.surface, borderRadius: 12, padding: '11px 6px 9px', textAlign: 'center', cursor: 'pointer', border: `1px solid ${C.border}` }}>
+          <div key={a.label} onClick={() => navFade(a.path)} style={{ background: C.surface, borderRadius: 12, padding: '11px 6px 9px', textAlign: 'center', cursor: 'pointer', border: `1px solid ${C.border}` }}>
             <div style={{ width: 26, height: 26, borderRadius: 8, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px' }}>
               {a.icon}
             </div>
@@ -455,7 +457,7 @@ export default function HomePage() {
       {/* Recent activity */}
       <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
         Recent activity
-        <span onClick={() => navigate('/activity')} style={{ fontSize: 11, color: C.accent2, fontWeight: 500, textTransform: 'none', letterSpacing: 0, cursor: 'pointer' }}>
+        <span onClick={() => navTo('/activity')} style={{ fontSize: 11, color: C.accent2, fontWeight: 500, textTransform: 'none', letterSpacing: 0, cursor: 'pointer' }}>
           {isAdmin ? 'See all' : ''}
         </span>
       </div>
@@ -465,7 +467,7 @@ export default function HomePage() {
       ) : activity.length === 0 ? (
         <div style={{ background: C.surface, borderRadius: 14, padding: 24, textAlign: 'center', border: `1px solid ${C.border}` }}>
           <div style={{ fontSize: 13, color: C.text3, marginBottom: 8 }}>No activity yet today.</div>
-          <div onClick={() => navigate('/sales')} style={{ fontSize: 12, color: C.accent2, cursor: 'pointer', fontWeight: 500 }}>Log your first sale →</div>
+          <div onClick={() => navTo('/sales')} style={{ fontSize: 12, color: C.accent2, cursor: 'pointer', fontWeight: 500 }}>Log your first sale →</div>
         </div>
       ) : (
         activity.map(item => <ActivityCard key={item.id + item.type} item={item} onTap={setSelectedItem} />)
@@ -478,7 +480,7 @@ export default function HomePage() {
           onClose={() => setSelectedItem(null)}
           isAdmin={isAdmin}
           onDelete={(id) => setActivity(prev => prev.filter(a => a.id !== id))}
-          navigate={navigate}
+          navigate={navTo}
         />
       )}
 
