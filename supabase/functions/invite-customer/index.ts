@@ -1,8 +1,7 @@
 // supabase/functions/invite-customer/index.ts
 // Deploy with: supabase functions deploy invite-customer
-// Set secrets:
-//   supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_key
-//   supabase secrets set SITE_URL=https://your-domain.com
+// Secrets needed: SITE_URL (set via dashboard)
+// SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY are auto-injected
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -18,7 +17,7 @@ serve(async (req) => {
   }
 
   try {
-    // ── 1. Verify caller is authenticated staff/admin ─────────
+    // ── 1. Verify caller is authenticated admin ───────────────
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) throw new Error('Missing authorization header')
 
@@ -34,7 +33,7 @@ serve(async (req) => {
     const { data: { user: caller }, error: authError } = await anonClient.auth.getUser()
     if (authError || !caller) throw new Error('Unauthorized')
 
-    // Check caller is admin (only admins can invite customers)
+    // Check caller is admin
     const { data: callerProfile, error: profileError } = await anonClient
       .from('profiles')
       .select('role, full_name')
@@ -52,7 +51,6 @@ serve(async (req) => {
       throw new Error('email and fullName are required')
     }
 
-    // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new Error('Invalid email format')
     }
@@ -64,7 +62,6 @@ serve(async (req) => {
 
     // ── 4. Validate contact_id if provided ────────────────────
     if (contactId) {
-      // Check contact exists
       const { data: contact, error: contactError } = await adminClient
         .from('contacts')
         .select('id, name')
@@ -75,47 +72,62 @@ serve(async (req) => {
         throw new Error('Contact not found')
       }
 
-      // Check contact is not already linked to another customer
+      // Check contact not already linked
       const { data: existingLink } = await adminClient
         .from('customers')
         .select('id')
         .eq('contact_id', contactId)
-        .single()
+        .maybeSingle()
 
       if (existingLink) {
         throw new Error('This contact is already linked to a customer account')
       }
     }
 
-    // ── 5. Check if email is already registered ───────────────
-    const { data: existingUsers } = await adminClient.auth.admin.listUsers()
-    const emailTaken = existingUsers?.users?.some(
-      (u: { email?: string }) => u.email?.toLowerCase() === email.toLowerCase()
-    )
-    if (emailTaken) {
-      throw new Error('An account with this email already exists')
-    }
-
-    // ── 6. Create the auth user via invite ────────────────────
-    // role is set in user_metadata — the handle_new_user() trigger
-    // reads it and sets profiles.role = 'customer'
+    // ── 5. Create the auth user via invite ────────────────────
     const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
       email,
       {
         data: {
           full_name: fullName,
-          role: 'customer',  // Server-side only — never trust client
+          role: 'customer',
         },
         redirectTo: `${siteUrl}/reset-password`,
       }
     )
 
-    if (inviteError) throw inviteError
+    if (inviteError) {
+      // Supabase returns a clear error if email already exists
+      throw new Error(inviteError.message || 'Failed to send invite')
+    }
 
     const newUserId = inviteData.user?.id
     if (!newUserId) throw new Error('Failed to create user account')
 
-    // ── 7. Create customer record with optional contact link ──
+    // ── 6. Wait for the profile trigger to fire ───────────────
+    // The handle_new_user() trigger creates the profiles row
+    // We need it to exist before inserting into customers (FK)
+    let profileReady = false
+    for (let i = 0; i < 10; i++) {
+      const { data: p } = await adminClient
+        .from('profiles')
+        .select('id')
+        .eq('id', newUserId)
+        .maybeSingle()
+      if (p) { profileReady = true; break }
+      await new Promise(r => setTimeout(r, 500))
+    }
+
+    if (!profileReady) {
+      // Create profile manually as fallback
+      await adminClient.from('profiles').insert({
+        id: newUserId,
+        full_name: fullName,
+        role: 'customer',
+      })
+    }
+
+    // ── 7. Create customer record ─────────────────────────────
     const customerRecord: Record<string, unknown> = {
       id: newUserId,
       display_name: fullName,
@@ -133,7 +145,7 @@ serve(async (req) => {
       .insert(customerRecord)
 
     if (customerError) {
-      // Rollback: delete the auth user if customer record fails
+      // Rollback: delete the auth user
       await adminClient.auth.admin.deleteUser(newUserId)
       throw new Error('Failed to create customer record: ' + customerError.message)
     }
@@ -146,14 +158,14 @@ serve(async (req) => {
         .eq('id', contactId)
     }
 
-    // ── 9. Log the invite in invites table ────────────────────
+    // ── 9. Log the invite ─────────────────────────────────────
     await adminClient.from('invites').insert({
       email: email.toLowerCase(),
       role: 'customer',
       contact_id: contactId || null,
       invited_by: caller.id,
       accepted: false,
-    })
+    }).catch(() => {}) // Non-critical, don't fail if invites table has issues
 
     // ── 10. Log activity ──────────────────────────────────────
     await adminClient.from('activity_logs').insert({
@@ -163,27 +175,27 @@ serve(async (req) => {
       entity_id: newUserId,
       summary: `Invited customer: ${fullName} (${email})${contactId ? ' — linked to contact' : ''}`,
       after_data: { email, fullName, contactId },
-    })
+    }).catch(() => {}) // Non-critical
 
     // ── 11. Award Bronze Duck badge ───────────────────────────
     const { data: bronzeBadge } = await adminClient
       .from('badge_definitions')
       .select('id')
       .eq('slug', 'bronze_duck')
-      .single()
+      .maybeSingle()
 
     if (bronzeBadge) {
       await adminClient.from('customer_badges').insert({
         customer_id: newUserId,
         badge_id: bronzeBadge.id,
-      })
+      }).catch(() => {})
 
       await adminClient.from('reward_events').insert({
         customer_id: newUserId,
         event_type: 'badge_earned',
         points: 0,
         description: 'Welcome badge: Bronze Duck',
-      })
+      }).catch(() => {})
     }
 
     // ── 12. Return success ────────────────────────────────────
