@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useContacts, useSales, useBuys } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
-import { supabase, inviteCustomer } from '../lib/supabase'
+import { supabase, inviteCustomer, deleteCustomer } from '../lib/supabase'
 import { C, Label, Input, Select, ChipGroup, CtaButton, GhostButton, Toast, RecordCard } from '../components/ui/FormComponents'
 
 const AVATAR_COLORS = ['#1E40AF','#065F46','#78350F','#1E3A8A','#7C2D12','#1E3A5F']
@@ -236,13 +236,8 @@ export function ContactDetailPage() {
     setDeleting(true)
     try {
       if (customerLink) {
-        // Delete customer badges, reward events, customer record, then the auth user
-        const custId = customerLink.id
-        await supabase.from('customer_badges').delete().eq('customer_id', custId)
-        await supabase.from('reward_events').delete().eq('customer_id', custId)
-        await supabase.from('customers').delete().eq('id', custId)
-        // Note: the auth user + profile will remain (no service role access from client)
-        // but the customer record and all rewards data is wiped
+        // Delete entire customer account via Edge Function (auth user, profile, rewards, badges)
+        await deleteCustomer(customerLink.id)
       }
       await remove(id)
       navigate('/contacts', { replace: true })

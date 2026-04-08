@@ -170,6 +170,30 @@ export async function inviteCustomer({ email, fullName, contactId }) {
   return result
 }
 
+// ── Delete customer (calls Edge Function) ────────────────────
+
+export async function deleteCustomer(customerId) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) throw new Error('Not authenticated')
+
+  const res = await fetch(
+    `${supabaseUrl}/functions/v1/delete-customer`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': supabaseAnonKey,
+      },
+      body: JSON.stringify({ customerId }),
+    }
+  )
+
+  const result = await res.json()
+  if (!res.ok) throw new Error(result?.error || `Delete failed (${res.status})`)
+  return result
+}
+
 // ── Admin: deactivate user ────────────────────────────────────
 
 export async function setUserActive(userId, isActive) {
