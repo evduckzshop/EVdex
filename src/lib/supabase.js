@@ -142,14 +142,19 @@ export async function inviteEmployee({ email, fullName, role = 'employee' }) {
 // ── Invite customer (calls Edge Function) ────────────────────
 
 export async function inviteCustomer({ email, fullName, contactId }) {
+  // Get current session token explicitly
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) throw new Error('Not authenticated — please log in again')
+
   const { data, error } = await supabase.functions.invoke('invite-customer', {
     body: { email, fullName, contactId },
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
   })
-  // functions.invoke returns error for non-2xx AND network failures
-  // The actual error message is sometimes in data, sometimes in error
+
   if (error) {
-    // Try to get a meaningful message
-    const msg = error?.message || error?.msg || 'Edge Function error'
+    const msg = error?.message || 'Edge Function error'
     console.error('invite-customer error:', error)
     console.error('invite-customer data:', data)
     throw new Error(msg)
