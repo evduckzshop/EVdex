@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useExpenses, useShows, useInventory, useContacts } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
 import {
-  C, Label, Input, Select, ChipGroup,
+  C, Label, Input, Select, ChipGroup, PaymentPicker,
   CtaButton, GhostButton, Toast, RecordCard,
 } from '../components/ui/FormComponents'
 
@@ -115,8 +115,7 @@ export function ExpensesPage() {
       <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Table fee – Springfield show" />
       <Label>Amount ($)</Label>
       <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
-      <Label>Paid by</Label>
-      <ChipGroup options={['Cash','Card','Transfer']} value={payment} onChange={setPayment} />
+      <PaymentPicker options={['Cash','Card','Transfer']} value={payment} onChange={setPayment} />
       <Label>Logged by</Label>
       <div style={{ fontSize: 13, color: C.text2, padding: '8px 0' }}>{profile?.full_name}</div>
       <CtaButton onClick={handleSave} disabled={saving} color="orange">{saving ? 'Saving…' : 'Save expense'}</CtaButton>

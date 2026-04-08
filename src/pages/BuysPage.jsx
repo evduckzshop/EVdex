@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useBuys, useContacts } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
-import { C, Label, Input, Select, ChipGroup, DealCalc, CtaButton, GhostButton, Toast, RecordCard, AutocompleteInput } from '../components/ui/FormComponents'
+import { C, Label, Input, Select, ChipGroup, DealCalc, CtaButton, GhostButton, Toast, RecordCard, AutocompleteInput, PaymentPicker } from '../components/ui/FormComponents'
 
 export default function BuysPage() {
   const { insert, rows, fetch, loading } = useBuys()
@@ -141,8 +141,7 @@ export default function BuysPage() {
         </div>
       )}
 
-      <Label>Payment method</Label>
-      <ChipGroup options={['Cash','Venmo','Zelle','Wire','Other']} value={payment} onChange={setPayment} color="green" />
+      <PaymentPicker options={['Cash','Venmo','Zelle','Wire']} value={payment} onChange={setPayment} />
 
       <Label>Notes (optional)</Label>
       <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. 80 cards, mostly holos, one PSA 9" />

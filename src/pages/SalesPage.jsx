@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSales } from '../hooks/useData'
 import { useContacts } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
-import { C, Label, Input, Select, ChipGroup, DealCalc, CtaButton, GhostButton, Toast, RecordCard, AutocompleteInput } from '../components/ui/FormComponents'
+import { C, Label, Input, Select, ChipGroup, DealCalc, CtaButton, GhostButton, Toast, RecordCard, AutocompleteInput, PaymentPicker } from '../components/ui/FormComponents'
 
 export default function SalesPage() {
   const { insert, rows, fetch, loading } = useSales()
@@ -86,8 +86,7 @@ export default function SalesPage() {
       <Label>Sold to</Label>
       <AutocompleteInput contacts={contacts} value={buyer} onSelect={setBuyer} placeholder="Buyer name or search contacts…" />
 
-      <Label>Payment method</Label>
-      <ChipGroup options={['Cash','Venmo','Zelle','Card','Other']} value={payment} onChange={setPayment} color="green" />
+      <PaymentPicker options={['Cash','Venmo','Zelle','Card']} value={payment} onChange={setPayment} />
 
       <Label>Logged by</Label>
       <div style={{ fontSize: 13, color: C.text2, padding: '8px 0' }}>{profile?.full_name}</div>

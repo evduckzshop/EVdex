@@ -81,6 +81,46 @@ export function ChipGroup({ options, value, onChange, color = 'accent' }) {
   )
 }
 
+export function PaymentPicker({ options, value, onChange }) {
+  const isOther = !options.includes(value)
+  const [customValue, setCustomValue] = useState(isOther && value ? value : '')
+
+  function handleChip(v) {
+    if (v === 'Other') {
+      onChange(customValue || '')
+    } else {
+      setCustomValue('')
+      onChange(v)
+    }
+  }
+
+  function handleCustom(v) {
+    setCustomValue(v)
+    onChange(v)
+  }
+
+  return (
+    <>
+      <Label>Payment method</Label>
+      <ChipGroup options={[...options, 'Other']} value={isOther ? 'Other' : value} onChange={handleChip} color="green" />
+      {isOther && (
+        <input
+          value={customValue}
+          onChange={e => handleCustom(e.target.value)}
+          placeholder="Enter payment method..."
+          style={{
+            width: '100%', padding: '11px 13px', marginTop: 8, background: C.surface,
+            border: `1px solid ${C.border2}`, borderRadius: 11,
+            fontSize: 14, color: C.text, fontFamily: 'inherit', outline: 'none',
+            boxSizing: 'border-box',
+          }}
+          autoFocus
+        />
+      )}
+    </>
+  )
+}
+
 function DealSlider({ pctNum, barColor, onPct, mktNum, amtNum }) {
   const trackRef = useRef(null)
   const [dragging, setDragging] = useState(false)
