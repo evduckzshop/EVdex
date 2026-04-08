@@ -17,7 +17,7 @@ export default function BuysPage() {
   const [condition, setCondition] = useState('NM')
   const [market, setMarket] = useState('')
   const [paid, setPaid] = useState('')
-  const [pct, setPct] = useState('')
+  const [pct, setPct] = useState('100')
   const [source, setSource] = useState('')
   const [payment, setPayment] = useState('Cash')
   const [notes, setNotes] = useState('')
@@ -65,7 +65,7 @@ export default function BuysPage() {
 
   function resetForm() {
     setBuyType('Singles'); setDesc(''); setQty(''); setCondition('NM')
-    setMarket(''); setPaid(''); setPct(''); setSource(''); setPayment('Cash')
+    setMarket(''); setPaid(''); setPct('100'); setSource(''); setPayment('Cash')
     setNotes(''); setPhotoName('')
   }
 

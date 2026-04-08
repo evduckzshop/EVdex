@@ -21,7 +21,7 @@ const NAV_ITEMS = [
     { id: 'sales',     label: 'Sales',     path: '/sales',     adminOnly: false },
     { id: 'buys',      label: 'Buys',      path: '/buys',      adminOnly: false },
     { id: 'inventory', label: 'Inventory', path: '/inventory', adminOnly: false },
-    { id: 'shows',     label: 'Shows',     path: '/shows',     adminOnly: false },
+    { id: 'shows',     label: 'Shows',     path: '/shows/manage', adminOnly: false },
     { id: 'expenses',  label: 'Expenses',  path: '/expenses',  adminOnly: false },
   ]},
   { group: 'Financials', items: [
@@ -46,7 +46,7 @@ const BOTTOM_TABS = [
   { id: 'home',     label: 'Home',     path: '/',         icon: HomeIcon },
   { id: 'sales',    label: 'Sales',    path: '/sales',    icon: SalesIcon },
   { id: 'buys',     label: 'Buys',     path: '/buys',     icon: BuysIcon },
-  { id: 'shows',    label: 'Shows',    path: '/shows',    icon: ShowsIcon },
+  { id: 'shows',    label: 'Shows',    path: '/shows/manage', icon: ShowsIcon },
   { id: 'expenses', label: 'Expenses', path: '/expenses', icon: ExpIcon },
 ]
 
@@ -248,7 +248,7 @@ export default function AppLayout({ children }) {
 }
 
 function getPageTitle(path) {
-  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Shows', '/shows/manage': 'Manage Shows', '/expenses': 'Expenses', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/export': 'Export CSV', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/settings': 'Settings', '/profile': 'Profile' }
+  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/export': 'Export CSV', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/settings': 'Settings', '/profile': 'Profile' }
   return map[path] || 'EVdex'
 }
 

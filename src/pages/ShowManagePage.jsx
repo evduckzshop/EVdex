@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useShows } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
-import { supabase, logActivity } from '../lib/supabase'
 import { C, Label, Input, Select, CtaButton, GhostButton, Toast } from '../components/ui/FormComponents'
 
 const statusColor = s => s === 'completed' ? C.green : s === 'in_progress' ? C.amber : '#7F77DD'

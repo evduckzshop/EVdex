@@ -87,7 +87,7 @@ export function PaymentPicker({ options, value, onChange }) {
 
   function handleChip(v) {
     if (v === 'Other') {
-      onChange(customValue || '')
+      onChange(customValue || 'Other')
     } else {
       setCustomValue('')
       onChange(v)

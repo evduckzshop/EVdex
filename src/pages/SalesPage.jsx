@@ -16,7 +16,7 @@ export default function SalesPage() {
   const [desc, setDesc] = useState('')
   const [market, setMarket] = useState('')
   const [price, setPrice] = useState('')
-  const [pct, setPct] = useState('')
+  const [pct, setPct] = useState('100')
   const [cost, setCost] = useState('')
   const [buyer, setBuyer] = useState('')
   const [payment, setPayment] = useState('Cash')
@@ -51,7 +51,7 @@ export default function SalesPage() {
   }
 
   function resetForm() {
-    setSaleType('Single card'); setDesc(''); setMarket(''); setPrice(''); setPct('')
+    setSaleType('Single card'); setDesc(''); setMarket(''); setPrice(''); setPct('100')
     setCost(''); setBuyer(''); setPayment('Cash')
   }
 

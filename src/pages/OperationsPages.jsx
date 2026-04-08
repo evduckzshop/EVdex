@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useExpenses, useShows, useInventory, useContacts } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -136,8 +136,9 @@ export function ShowsPage() {
   const { insert, rows, fetch, loading } = useShows()
   const { profile } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [name, setName] = useState('')
-  const [date, setDate] = useState('')
+  const [date, setDate] = useState(searchParams.get('date') || '')
   const [location, setLocation] = useState('')
   const [fee, setFee] = useState('')
   const [notes, setNotes] = useState('')
@@ -153,7 +154,7 @@ export function ShowsPage() {
       await insert({ name: name.trim(), event_date: date||null, location: location||null, table_fee: parseFloat(fee)||0, notes: notes||null, status: 'upcoming' })
       setMsg({ text: 'Show added!', type: 'success' })
       setName(''); setDate(''); setLocation(''); setFee(''); setNotes('')
-      setTimeout(() => navigate('/'), 700)
+      setTimeout(() => navigate('/shows/manage'), 700)
     } catch (e) { setMsg({ text: 'Error: ' + e.message, type: 'error' })
     } finally { setSaving(false) }
   }
@@ -180,7 +181,7 @@ export function ShowsPage() {
         <div><Label>Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Crowd, vibe…" /></div>
       </div>
       <CtaButton onClick={handleSave} disabled={saving} color="orange">{saving ? 'Saving…' : 'Add show'}</CtaButton>
-      <GhostButton onClick={() => navigate('/')}>Cancel</GhostButton>
+      <GhostButton onClick={() => navigate('/shows/manage')}>Cancel</GhostButton>
       <div onClick={() => navigate('/shows/manage')} style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', margin: '20px 0 8px', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
         Show history
         <span style={{ fontSize: 11, color: '#3B82F6', fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>View all →</span>
