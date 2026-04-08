@@ -1,5 +1,5 @@
 // Shared UI primitives for all form pages
-import { useState, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 export const C = {
   surface: '#1E293B', surface2: '#162032', surface3: '#0F172A',
