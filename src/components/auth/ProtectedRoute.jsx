@@ -21,14 +21,28 @@ function LoadingScreen() {
   )
 }
 
-// Requires any authenticated, active user
+// Requires any authenticated, active user (staff only — customers redirect to portal)
 export function RequireAuth({ children }) {
-  const { session, profile, loading } = useAuth()
+  const { session, profile, loading, isCustomer } = useAuth()
   const location = useLocation()
 
   if (loading) return <LoadingScreen />
   if (!session) return <Navigate to="/login" state={{ from: location }} replace />
   if (profile && !profile.is_active) return <Navigate to="/deactivated" replace />
+  if (isCustomer) return <Navigate to="/portal" replace />
+
+  return children
+}
+
+// Requires customer role — staff gets redirected to home
+export function RequireCustomer({ children }) {
+  const { session, profile, loading, isCustomer } = useAuth()
+  const location = useLocation()
+
+  if (loading) return <LoadingScreen />
+  if (!session) return <Navigate to="/login" state={{ from: location }} replace />
+  if (profile && !profile.is_active) return <Navigate to="/deactivated" replace />
+  if (!isCustomer) return <Navigate to="/" replace />
 
   return children
 }

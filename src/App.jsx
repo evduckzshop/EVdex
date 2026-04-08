@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { NavigationProvider } from './context/NavigationContext'
-import { RequireAuth, RequireAdmin, AccessDenied, DeactivatedPage } from './components/auth/ProtectedRoute'
+import { RequireAuth, RequireAdmin, RequireCustomer, AccessDenied, DeactivatedPage } from './components/auth/ProtectedRoute'
 import AppLayout from './components/layout/AppLayout'
+import CustomerLayout from './components/layout/CustomerLayout'
 
 // Pages
 import LoginPage from './pages/LoginPage'
@@ -33,6 +34,12 @@ const ExportPage     = lazy(() => import('./pages/ExportPage'))
 const ActivityPage   = lazy(() => import('./pages/ActivityPage'))
 const SettingsPage   = lazy(() => import('./pages/SettingsPage'))
 
+// Customer portal pages
+const PortalDashboard = lazy(() => import('./pages/portal/PortalDashboard'))
+const PortalHistory   = lazy(() => import('./pages/portal/PortalHistory'))
+const PortalBadges    = lazy(() => import('./pages/portal/PortalBadges'))
+const PortalProfile   = lazy(() => import('./pages/portal/PortalProfile'))
+
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
     <div style={{ width: 24, height: 24, border: '2px solid rgba(37,99,235,.2)', borderTopColor: '#2563EB', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
@@ -40,9 +47,14 @@ const PageLoader = () => (
   </div>
 )
 
-// Wraps a page with AppLayout
+// Wraps a page with AppLayout (staff)
 function Layout({ children }) {
   return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>
+}
+
+// Wraps a page with CustomerLayout (customer portal)
+function PortalLayout({ children }) {
+  return <CustomerLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></CustomerLayout>
 }
 
 // Redirect authenticated users away from login
@@ -92,6 +104,12 @@ export default function App() {
           <Route path="/employees" element={<RequireAdmin><Layout><EmployeesPage /></Layout></RequireAdmin>} />
           <Route path="/activity" element={<RequireAdmin><Layout><ActivityPage /></Layout></RequireAdmin>} />
           <Route path="/settings" element={<RequireAdmin><Layout><SettingsPage /></Layout></RequireAdmin>} />
+
+          {/* ── Customer portal ── */}
+          <Route path="/portal" element={<RequireCustomer><PortalLayout><PortalDashboard /></PortalLayout></RequireCustomer>} />
+          <Route path="/portal/history" element={<RequireCustomer><PortalLayout><PortalHistory /></PortalLayout></RequireCustomer>} />
+          <Route path="/portal/badges" element={<RequireCustomer><PortalLayout><PortalBadges /></PortalLayout></RequireCustomer>} />
+          <Route path="/portal/profile" element={<RequireCustomer><PortalLayout><PortalProfile /></PortalLayout></RequireCustomer>} />
 
           {/* ── Fallback ── */}
           <Route path="*" element={<Navigate to="/" replace />} />

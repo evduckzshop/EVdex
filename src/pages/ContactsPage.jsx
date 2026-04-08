@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useContacts, useSales, useBuys } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
+import { supabase, inviteCustomer } from '../lib/supabase'
 import { C, Label, Input, Select, ChipGroup, CtaButton, GhostButton, Toast, RecordCard } from '../components/ui/FormComponents'
 
 const AVATAR_COLORS = ['#1E40AF','#065F46','#78350F','#1E3A8A','#7C2D12','#1E3A5F']
@@ -168,7 +169,26 @@ export function ContactDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
 
+  // Customer portal invite state
+  const [customerLink, setCustomerLink] = useState(null) // null = loading, false = not linked, object = linked
+  const [showInvite, setShowInvite] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteName, setInviteName] = useState('')
+  const [inviting, setInviting] = useState(false)
+  const [inviteMsg, setInviteMsg] = useState({ text: '', type: '' })
+
   useEffect(() => { fetch(); fetchSales(); fetchBuys() }, [])
+
+  // Check if this contact is linked to a customer account
+  useEffect(() => {
+    if (!id) return
+    supabase.from('customers')
+      .select('id, display_name, email, created_at')
+      .eq('contact_id', id)
+      .maybeSingle()
+      .then(({ data }) => setCustomerLink(data || false))
+      .catch(() => setCustomerLink(false))
+  }, [id])
 
   const contact = rows.find(r => r.id === id)
 
@@ -195,6 +215,32 @@ export function ContactDetailPage() {
       setError('Error deleting: ' + e.message)
       setDeleting(false)
       setConfirmDelete(false)
+    }
+  }
+
+  function openInviteModal() {
+    setInviteEmail(contact.email || '')
+    setInviteName(contact.name || '')
+    setInviteMsg({ text: '', type: '' })
+    setShowInvite(true)
+  }
+
+  async function handleInvite() {
+    if (!inviteEmail.trim()) { setInviteMsg({ text: 'Email is required.', type: 'error' }); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail)) { setInviteMsg({ text: 'Enter a valid email address.', type: 'error' }); return }
+    setInviting(true)
+    setInviteMsg({ text: '', type: '' })
+    try {
+      await inviteCustomer({ email: inviteEmail.trim(), fullName: inviteName.trim() || contact.name, contactId: id })
+      setInviteMsg({ text: 'Invite sent! Customer will receive an email to set up their account.', type: 'success' })
+      // Refresh customer link status
+      const { data } = await supabase.from('customers').select('id, display_name, email, created_at').eq('contact_id', id).maybeSingle()
+      setCustomerLink(data || false)
+      setTimeout(() => setShowInvite(false), 2000)
+    } catch (e) {
+      setInviteMsg({ text: e.message || 'Failed to send invite.', type: 'error' })
+    } finally {
+      setInviting(false)
     }
   }
 
@@ -258,6 +304,80 @@ export function ContactDetailPage() {
           <div style={{ fontSize: 9, color: C.text3 }}>{history.length} total</div>
         </div>
       </div>
+
+      {/* Customer Portal Status */}
+      {isAdmin && customerLink !== null && (
+        <div style={{ background: C.surface, borderRadius: 14, padding: '12px 14px', marginBottom: 12, border: `1px solid ${customerLink ? 'rgba(16,185,129,.2)' : C.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: customerLink ? C.green : C.text3 }} />
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
+                  {customerLink ? 'Customer Portal Active' : 'No Portal Account'}
+                </div>
+                {customerLink && (
+                  <div style={{ fontSize: 10, color: C.text3, marginTop: 1 }}>
+                    {customerLink.email} · Joined {new Date(customerLink.created_at).toLocaleDateString()}
+                  </div>
+                )}
+              </div>
+            </div>
+            {!customerLink && (
+              <button onClick={openInviteModal} style={{
+                padding: '6px 14px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                background: 'rgba(37,99,235,.12)', border: '1px solid rgba(37,99,235,.25)',
+                color: '#3B82F6', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+              }}>
+                Invite to Portal
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Invite Modal */}
+      {showInvite && (
+        <>
+          <div onClick={() => setShowInvite(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 300 }} />
+          <div style={{
+            position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+            width: '100%', maxWidth: 390, zIndex: 301,
+            background: '#0F172A', borderRadius: '20px 20px 0 0',
+            padding: '16px 18px max(20px, env(safe-area-inset-bottom))',
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.15)', margin: '0 auto 14px' }} />
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 4 }}>Invite to Customer Portal</div>
+            <div style={{ fontSize: 12, color: C.text3, marginBottom: 14 }}>
+              Send <span style={{ color: C.text, fontWeight: 600 }}>{contact.name}</span> an invite to create their rewards account. They'll receive an email to set up their password.
+            </div>
+
+            {inviteMsg.text && <Toast message={inviteMsg.text} type={inviteMsg.type} />}
+
+            <div style={{ fontSize: 9, color: C.text3, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 5 }}>Display name</div>
+            <Input value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Customer display name" />
+
+            <div style={{ fontSize: 9, color: C.text3, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 5, marginTop: 12 }}>Email address</div>
+            <Input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="customer@email.com" />
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+              <button onClick={() => setShowInvite(false)} style={{
+                flex: 1, padding: 13, borderRadius: 12, background: 'transparent',
+                border: `1px solid ${C.border2}`, fontSize: 13, fontWeight: 500,
+                color: C.text2, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                Cancel
+              </button>
+              <button onClick={handleInvite} disabled={inviting} style={{
+                flex: 2, padding: 13, borderRadius: 12, border: 'none',
+                background: inviting ? '#374151' : '#2563EB', fontSize: 13, fontWeight: 600,
+                color: '#fff', cursor: inviting ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+              }}>
+                {inviting ? 'Sending invite...' : 'Send Invite'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Transaction history */}
       <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>Transaction history</div>

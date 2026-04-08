@@ -139,6 +139,17 @@ export async function inviteEmployee({ email, fullName, role = 'employee' }) {
   return data
 }
 
+// ── Invite customer (calls Edge Function) ────────────────────
+
+export async function inviteCustomer({ email, fullName, contactId }) {
+  const { data, error } = await supabase.functions.invoke('invite-customer', {
+    body: { email, fullName, contactId },
+  })
+  if (error) throw error
+  if (data?.error) throw new Error(data.error)
+  return data
+}
+
 // ── Admin: deactivate user ────────────────────────────────────
 
 export async function setUserActive(userId, isActive) {

@@ -13,6 +13,8 @@ const TOP_LEVEL = new Set([
   '/inventory', '/contacts', '/transactions', '/cashflow', '/pl',
   '/reporting', '/shows/compare', '/export', '/employees', '/activity',
   '/settings', '/profile', '/pong',
+  // Customer portal
+  '/portal', '/portal/history', '/portal/badges', '/portal/profile',
 ])
 
 function isDeepPath(path) {

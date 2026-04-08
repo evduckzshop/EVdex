@@ -59,6 +59,8 @@ export function AuthProvider({ children }) {
 
   const isAdmin = profile?.role === 'admin'
   const isEmployee = profile?.role === 'employee'
+  const isCustomer = profile?.role === 'customer'
+  const isStaff = isAdmin || isEmployee
   const isActive = profile?.is_active === true
 
   return (
@@ -69,6 +71,8 @@ export function AuthProvider({ children }) {
       loading,
       isAdmin,
       isEmployee,
+      isCustomer,
+      isStaff,
       isActive,
       refreshProfile,
     }}>
