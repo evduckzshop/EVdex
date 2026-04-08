@@ -7,6 +7,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.local')
 }
 
+console.log('[EVdex] Supabase init:', supabaseUrl)
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -43,12 +45,17 @@ export async function updatePassword(newPassword) {
 // ── Profile helpers ───────────────────────────────────────────
 
 export async function getProfile(userId) {
+  console.log('[EVdex] getProfile: querying profiles for', userId)
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', userId)
     .single()
-  if (error) throw error
+  if (error) {
+    console.error('[EVdex] getProfile FAILED:', error.message, error.code)
+    throw error
+  }
+  console.log('[EVdex] getProfile success:', data?.role, data?.is_active)
   return data
 }
 

@@ -20,7 +20,7 @@ function StatCard({ label, value, color }) {
   )
 }
 
-function ActivityCard({ item }) {
+function ActivityCard({ item, onTap }) {
   const isSale = item.type === 'sale'
   const isBuy = item.type === 'buy'
   const color = isSale ? C.green : isBuy ? C.red : C.amber
@@ -31,7 +31,7 @@ function ActivityCard({ item }) {
     : `-$${Number(item.amount).toFixed(0)}`
 
   return (
-    <div style={{ background: C.surface, borderRadius: 14, padding: '12px 14px', marginBottom: 8, border: `1px solid ${C.border}` }}>
+    <div onClick={() => onTap(item)} style={{ background: C.surface, borderRadius: 14, padding: '12px 14px', marginBottom: 8, border: `1px solid ${C.border}`, cursor: 'pointer' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -53,6 +53,100 @@ function ActivityCard({ item }) {
   )
 }
 
+function ActivityDetail({ item, onClose }) {
+  if (!item) return null
+  const isSale = item.type === 'sale'
+  const isBuy = item.type === 'buy'
+  const isExpense = item.type === 'expense'
+  const color = isSale ? C.green : isBuy ? C.red : C.amber
+  const typeLabel = isSale ? 'Sale' : isBuy ? 'Buy' : 'Expense'
+
+  const rows = []
+  if (isSale) {
+    rows.push({ label: 'Item', value: item.description })
+    rows.push({ label: 'Sale type', value: item.sale_type || '—' })
+    rows.push({ label: 'Sale price', value: `$${Number(item.sale_price).toFixed(2)}`, color: C.green })
+    if (item.market_value) rows.push({ label: 'Market value', value: `$${Number(item.market_value).toFixed(2)}` })
+    if (item.pct_of_market) rows.push({ label: '% of market', value: `${item.pct_of_market}%` })
+    if (item.cost_basis) rows.push({ label: 'Cost basis', value: `$${Number(item.cost_basis).toFixed(2)}` })
+    if (item.cost_basis && item.sale_price) {
+      const profit = Number(item.sale_price) - Number(item.cost_basis)
+      rows.push({ label: 'Profit', value: `${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}`, color: profit >= 0 ? C.green : C.red })
+    }
+    rows.push({ label: 'Buyer', value: item.buyer || '—' })
+    rows.push({ label: 'Payment', value: item.payment || '—' })
+  } else if (isBuy) {
+    rows.push({ label: 'Item', value: item.description })
+    rows.push({ label: 'Buy type', value: item.buy_type || '—' })
+    rows.push({ label: 'Amount paid', value: `$${Number(item.amount_paid).toFixed(2)}`, color: C.red })
+    if (item.market_value) rows.push({ label: 'Market value', value: `$${Number(item.market_value).toFixed(2)}` })
+    if (item.pct_of_market) rows.push({ label: '% of market', value: `${item.pct_of_market}%` })
+    if (item.qty) rows.push({ label: 'Qty', value: item.qty })
+    if (item.condition) rows.push({ label: 'Condition', value: item.condition })
+    rows.push({ label: 'Source', value: item.source || '—' })
+    rows.push({ label: 'Payment', value: item.payment || '—' })
+    if (item.notes) rows.push({ label: 'Notes', value: item.notes })
+  } else {
+    rows.push({ label: 'Description', value: item.description })
+    rows.push({ label: 'Category', value: item.category || '—' })
+    rows.push({ label: 'Amount', value: `$${Number(item.amount).toFixed(2)}`, color: C.amber })
+    if (item.payment) rows.push({ label: 'Payment', value: item.payment })
+  }
+  rows.push({ label: 'Logged by', value: item.who || '—' })
+  rows.push({ label: 'Time', value: new Date(item.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) })
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 300 }} />
+      {/* Sheet */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+        width: '100%', maxWidth: 390, zIndex: 301,
+        background: '#0F172A', borderRadius: '20px 20px 0 0',
+        padding: '16px 18px max(20px, env(safe-area-inset-bottom))',
+        maxHeight: '75vh', overflowY: 'auto',
+      }}>
+        {/* Handle */}
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.15)', margin: '0 auto 14px' }} />
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{typeLabel} details</div>
+          </div>
+          <div onClick={onClose} style={{ fontSize: 12, color: C.text3, cursor: 'pointer', padding: '4px 10px', background: 'rgba(255,255,255,.05)', borderRadius: 8 }}>Close</div>
+        </div>
+
+        {/* Amount hero */}
+        <div style={{ background: C.surface2, borderRadius: 14, padding: 14, marginBottom: 12, textAlign: 'center', border: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 10, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>
+            {isSale ? 'Sale price' : isBuy ? 'Amount paid' : 'Expense amount'}
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 700, color, letterSpacing: -1 }}>
+            {isSale ? '+' : '-'}${Number(item.amount).toFixed(2)}
+          </div>
+        </div>
+
+        {/* Detail rows */}
+        <div style={{ background: C.surface, borderRadius: 14, padding: '4px 14px', border: `1px solid ${C.border}` }}>
+          {rows.map((r, i) => (
+            <div key={r.label} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '10px 0',
+              borderBottom: i < rows.length - 1 ? `1px solid ${C.border}` : 'none',
+            }}>
+              <div style={{ fontSize: 13, color: C.text3 }}>{r.label}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: r.color || C.text, maxWidth: '60%', textAlign: 'right', wordBreak: 'break-word' }}>{r.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function HomePage() {
   const { isAdmin, profile } = useAuth()
   const navigate = useNavigate()
@@ -62,26 +156,35 @@ export default function HomePage() {
   const [activeShowId, setActiveShowId] = useState(null)
   const [liveShow, setLiveShow] = useState({ sales: 0, buys: 0, fee: 0 })
   const [loading, setLoading] = useState(true)
+  const [selectedItem, setSelectedItem] = useState(null)
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     setLoading(true)
+    console.log('[EVdex Home] loadData started')
     try {
       const todayStart = new Date(); todayStart.setHours(0,0,0,0)
       const ts = todayStart.toISOString()
 
       const [salesRes, buysRes, expRes, showsRes] = await Promise.all([
-        supabase.from('sales').select('id,description,sale_price,pct_of_market,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
-        supabase.from('buys').select('id,description,amount_paid,pct_of_market,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
-        supabase.from('expenses').select('id,description,amount,created_at').gte('created_at', ts).order('created_at', { ascending: false }),
+        supabase.from('sales').select('id,description,sale_type,sale_price,market_value,pct_of_market,cost_basis,buyer,payment,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
+        supabase.from('buys').select('id,description,buy_type,amount_paid,market_value,pct_of_market,qty,condition,source,payment,notes,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
+        supabase.from('expenses').select('id,description,category,amount,payment,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
         supabase.from('shows').select('*').in('status', ['upcoming','in_progress']).order('event_date', { ascending: true }),
       ])
+
+      if (salesRes.error) console.error('[EVdex Home] sales query error:', salesRes.error)
+      if (buysRes.error) console.error('[EVdex Home] buys query error:', buysRes.error)
+      if (expRes.error) console.error('[EVdex Home] expenses query error:', expRes.error)
+      if (showsRes.error) console.error('[EVdex Home] shows query error:', showsRes.error)
 
       const sales = salesRes.data || []
       const buys = buysRes.data || []
       const expenses = expRes.data || []
       const showData = showsRes.data || []
+
+      console.log('[EVdex Home] loaded:', { sales: sales.length, buys: buys.length, expenses: expenses.length, shows: showData.length })
 
       const todaySales = sales.reduce((s, r) => s + Number(r.sale_price), 0)
       const todayBuys = buys.reduce((s, r) => s + Number(r.amount_paid), 0)
@@ -90,16 +193,16 @@ export default function HomePage() {
       setStats({ todaySales, todayBuys, todayExpenses, txCount: sales.length + buys.length + expenses.length })
       setShows(showData)
 
-      // Merge into activity feed
+      // Merge into activity feed — include all fields for detail view
       const merged = [
         ...sales.map(r => ({ ...r, type: 'sale', amount: r.sale_price, pct: r.pct_of_market, who: r.profiles?.full_name })),
         ...buys.map(r => ({ ...r, type: 'buy', amount: r.amount_paid, pct: r.pct_of_market, who: r.profiles?.full_name })),
-        ...expenses.map(r => ({ ...r, type: 'expense', amount: r.amount })),
+        ...expenses.map(r => ({ ...r, type: 'expense', amount: r.amount, who: r.profiles?.full_name })),
       ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
       setActivity(merged)
     } catch (e) {
-      console.error('Failed to load dashboard data:', e)
+      console.error('[EVdex Home] loadData FAILED:', e)
     } finally {
       setLoading(false)
     }
@@ -224,8 +327,11 @@ export default function HomePage() {
           <div onClick={() => navigate('/sales')} style={{ fontSize: 12, color: C.accent2, cursor: 'pointer', fontWeight: 500 }}>Log your first sale →</div>
         </div>
       ) : (
-        activity.map(item => <ActivityCard key={item.id + item.type} item={item} />)
+        activity.map(item => <ActivityCard key={item.id + item.type} item={item} onTap={setSelectedItem} />)
       )}
+
+      {/* Activity detail bottom sheet */}
+      {selectedItem && <ActivityDetail item={selectedItem} onClose={() => setSelectedItem(null)} />}
 
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
     </div>
