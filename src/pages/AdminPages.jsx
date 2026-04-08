@@ -28,21 +28,31 @@ function Stat({ label, val, color }) {
 export function CashFlowPage() {
   const [data, setData] = useState({ sales: 0, buys: 0, expenses: 0 })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     async function load() {
-      const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
-      const ts = weekAgo.toISOString()
-      const [s, b, e] = await Promise.all([
-        supabase.from('sales').select('sale_price').gte('created_at', ts),
-        supabase.from('buys').select('amount_paid').gte('created_at', ts),
-        supabase.from('expenses').select('amount').gte('created_at', ts),
-      ])
-      const sales = (s.data||[]).reduce((sum,r) => sum + Number(r.sale_price), 0)
-      const buys = (b.data||[]).reduce((sum,r) => sum + Number(r.amount_paid), 0)
-      const expenses = (e.data||[]).reduce((sum,r) => sum + Number(r.amount), 0)
-      setData({ sales, buys, expenses })
-      setLoading(false)
+      try {
+        const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
+        const ts = weekAgo.toISOString()
+        const [s, b, e] = await Promise.all([
+          supabase.from('sales').select('sale_price').gte('created_at', ts),
+          supabase.from('buys').select('amount_paid').gte('created_at', ts),
+          supabase.from('expenses').select('amount').gte('created_at', ts),
+        ])
+        if (s.error) throw s.error
+        if (b.error) throw b.error
+        if (e.error) throw e.error
+        const sales = (s.data||[]).reduce((sum,r) => sum + Number(r.sale_price), 0)
+        const buys = (b.data||[]).reduce((sum,r) => sum + Number(r.amount_paid), 0)
+        const expenses = (e.data||[]).reduce((sum,r) => sum + Number(r.amount), 0)
+        setData({ sales, buys, expenses })
+      } catch (e) {
+        setError(e.message || 'Failed to load cash flow data')
+        console.error('CashFlowPage load error:', e)
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [])
@@ -62,7 +72,9 @@ export function CashFlowPage() {
         </div>
       </div>
 
-      {loading ? <div style={{ textAlign: 'center', color: C.text3, padding: 24 }}>Loading…</div> : (
+      {loading ? <div style={{ textAlign: 'center', color: C.text3, padding: 24 }}>Loading…</div> : error ? (
+        <div style={{ background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.2)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.red }}>{error}</div>
+      ) : (
         <>
           <div style={sectionHd}>Weekly breakdown</div>
           <div style={rcard}>
@@ -142,23 +154,34 @@ export function PLPage() {
 export function ReportingPage() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     async function load() {
-      const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30)
-      const ts = monthAgo.toISOString()
-      const [s, b, e] = await Promise.all([
-        supabase.from('sales').select('sale_price,sale_type,pct_of_market').gte('created_at', ts),
-        supabase.from('buys').select('amount_paid,buy_type,pct_of_market').gte('created_at', ts),
-        supabase.from('expenses').select('amount,category').gte('created_at', ts),
-      ])
-      setData({ sales: s.data||[], buys: b.data||[], expenses: e.data||[] })
-      setLoading(false)
+      try {
+        const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30)
+        const ts = monthAgo.toISOString()
+        const [s, b, e] = await Promise.all([
+          supabase.from('sales').select('sale_price,sale_type,pct_of_market').gte('created_at', ts),
+          supabase.from('buys').select('amount_paid,buy_type,pct_of_market').gte('created_at', ts),
+          supabase.from('expenses').select('amount,category').gte('created_at', ts),
+        ])
+        if (s.error) throw s.error
+        if (b.error) throw b.error
+        if (e.error) throw e.error
+        setData({ sales: s.data||[], buys: b.data||[], expenses: e.data||[] })
+      } catch (e) {
+        setError(e.message || 'Failed to load reporting data')
+        console.error('ReportingPage load error:', e)
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [])
 
   if (loading) return <div style={{ paddingTop: 24, textAlign: 'center', color: C.text3 }}>Loading…</div>
+  if (error) return <div style={{ paddingTop: 24 }}><div style={{ background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.2)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.red }}>{error}</div></div>
 
   const totalSales = data.sales.reduce((s,r) => s+Number(r.sale_price), 0)
   const totalBuys = data.buys.reduce((s,r) => s+Number(r.amount_paid), 0)
@@ -221,9 +244,11 @@ export function ReportingPage() {
 // ── EXPORT CSV ───────────────────────────────────────────────────
 export function ExportPage() {
   const [exporting, setExporting] = useState('')
+  const [msg, setMsg] = useState({ text: '', type: '' })
 
   async function doExport(type) {
     setExporting(type)
+    setMsg({ text: '', type: '' })
     const tableMap = { sales: 'sales', buys: 'buys', expenses: 'expenses', inventory: 'inventory', shows: 'shows', contacts: 'contacts' }
 
     try {
@@ -232,7 +257,8 @@ export function ExportPage() {
         const tables = ['sales','buys','expenses','inventory','shows','contacts']
         let csv = ''
         for (const t of tables) {
-          const { data } = await supabase.from(t).select('*').order('created_at', { ascending: false })
+          const { data, error } = await supabase.from(t).select('*').order('created_at', { ascending: false })
+          if (error) throw error
           if (data?.length) {
             csv += `\n\n=== ${t.toUpperCase()} ===\n`
             csv += Object.keys(data[0]).join(',') + '\n'
@@ -241,12 +267,13 @@ export function ExportPage() {
         }
         downloadCSV(csv, 'evdex_full_export.csv')
       } else {
-        const { data } = await supabase.from(tableMap[type] || type).select('*').order('created_at', { ascending: false })
-        if (!data?.length) { alert('No data to export.'); return }
+        const { data, error } = await supabase.from(tableMap[type] || type).select('*').order('created_at', { ascending: false })
+        if (error) throw error
+        if (!data?.length) { setMsg({ text: 'No data to export.', type: 'error' }); return }
         const csv = [Object.keys(data[0]).join(','), ...data.map(row => Object.values(row).map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(','))].join('\n')
         downloadCSV(csv, `evdex_${type}_${new Date().toISOString().split('T')[0]}.csv`)
       }
-    } catch (e) { alert('Export error: ' + e.message) }
+    } catch (e) { setMsg({ text: 'Export error: ' + e.message, type: 'error' }) }
     finally { setExporting('') }
   }
 
@@ -274,6 +301,10 @@ export function ExportPage() {
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>Compatible with Excel &amp; Google Sheets. Each file includes date stamp, timestamp, and all fields.</div>
       </div>
 
+      {msg.text && (
+        <div style={{ background: msg.type === 'error' ? 'rgba(248,113,113,.08)' : 'rgba(16,185,129,.08)', border: `1px solid ${msg.type === 'error' ? 'rgba(248,113,113,.2)' : 'rgba(16,185,129,.2)'}`, borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: msg.type === 'error' ? C.red : C.green }}>{msg.text}</div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
         {exports.map(e => (
           <button key={e.key} onClick={() => doExport(e.key)} disabled={!!exporting} style={{ padding: '12px 10px', borderRadius: 12, background: C.surface, border: `1px solid ${C.border2}`, cursor: exporting ? 'not-allowed' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
@@ -298,13 +329,19 @@ export function ExportPage() {
 export function ActivityPage() {
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     supabase.from('activity_logs')
       .select('*, profiles!user_id(full_name)')
       .order('created_at', { ascending: false })
       .limit(100)
-      .then(({ data }) => { setLogs(data||[]); setLoading(false) })
+      .then(({ data, error }) => {
+        if (error) { setError(error.message); console.error('ActivityPage load error:', error) }
+        else setLogs(data||[])
+      })
+      .catch(e => { setError(e.message); console.error('ActivityPage load error:', e) })
+      .finally(() => setLoading(false))
   }, [])
 
   const actionColor = a => {
@@ -324,6 +361,7 @@ export function ActivityPage() {
       </div>
 
       {loading ? <div style={{ textAlign: 'center', color: C.text3, padding: 24 }}>Loading…</div>
+        : error ? <div style={{ background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.2)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.red }}>{error}</div>
         : logs.length === 0 ? <div style={{ textAlign: 'center', color: C.text3, padding: 24, fontSize: 13 }}>No activity logged yet.</div>
         : logs.map(log => (
           <div key={log.id} style={{ background: C.surface, borderRadius: 14, padding: '12px 14px', marginBottom: 8, border: `1px solid ${C.border}` }}>

@@ -60,8 +60,12 @@ export default function AppLayout({ children }) {
   useEffect(() => { setSidebarOpen(false) }, [location.pathname])
 
   async function handleSignOut() {
-    await signOut()
-    navigate('/login')
+    try {
+      await signOut()
+      navigate('/login')
+    } catch (e) {
+      console.error('Sign out failed:', e)
+    }
   }
 
   const pageTitle = getPageTitle(location.pathname)

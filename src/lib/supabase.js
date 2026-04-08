@@ -78,7 +78,7 @@ export async function logActivity({ actionType, entityType, entityId, summary, b
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
-  await supabase.from('activity_logs').insert({
+  const { error } = await supabase.from('activity_logs').insert({
     user_id: user.id,
     action_type: actionType,
     entity_type: entityType,
@@ -87,6 +87,7 @@ export async function logActivity({ actionType, entityType, entityId, summary, b
     before_data: beforeData || null,
     after_data: afterData || null,
   })
+  if (error) console.error('Failed to log activity:', error.message)
 }
 
 // ── Invite helper (calls Edge Function) ───────────────────────

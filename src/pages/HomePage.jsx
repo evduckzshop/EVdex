@@ -67,37 +67,42 @@ export default function HomePage() {
 
   async function loadData() {
     setLoading(true)
-    const todayStart = new Date(); todayStart.setHours(0,0,0,0)
-    const ts = todayStart.toISOString()
+    try {
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0)
+      const ts = todayStart.toISOString()
 
-    const [salesRes, buysRes, expRes, showsRes] = await Promise.all([
-      supabase.from('sales').select('id,description,sale_price,pct_of_market,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
-      supabase.from('buys').select('id,description,amount_paid,pct_of_market,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
-      supabase.from('expenses').select('id,description,amount,created_at').gte('created_at', ts).order('created_at', { ascending: false }),
-      supabase.from('shows').select('*').in('status', ['upcoming','in_progress']).order('event_date', { ascending: true }),
-    ])
+      const [salesRes, buysRes, expRes, showsRes] = await Promise.all([
+        supabase.from('sales').select('id,description,sale_price,pct_of_market,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
+        supabase.from('buys').select('id,description,amount_paid,pct_of_market,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
+        supabase.from('expenses').select('id,description,amount,created_at').gte('created_at', ts).order('created_at', { ascending: false }),
+        supabase.from('shows').select('*').in('status', ['upcoming','in_progress']).order('event_date', { ascending: true }),
+      ])
 
-    const sales = salesRes.data || []
-    const buys = buysRes.data || []
-    const expenses = expRes.data || []
-    const showData = showsRes.data || []
+      const sales = salesRes.data || []
+      const buys = buysRes.data || []
+      const expenses = expRes.data || []
+      const showData = showsRes.data || []
 
-    const todaySales = sales.reduce((s, r) => s + Number(r.sale_price), 0)
-    const todayBuys = buys.reduce((s, r) => s + Number(r.amount_paid), 0)
-    const todayExpenses = expenses.reduce((s, r) => s + Number(r.amount), 0)
+      const todaySales = sales.reduce((s, r) => s + Number(r.sale_price), 0)
+      const todayBuys = buys.reduce((s, r) => s + Number(r.amount_paid), 0)
+      const todayExpenses = expenses.reduce((s, r) => s + Number(r.amount), 0)
 
-    setStats({ todaySales, todayBuys, todayExpenses, txCount: sales.length + buys.length + expenses.length })
-    setShows(showData)
+      setStats({ todaySales, todayBuys, todayExpenses, txCount: sales.length + buys.length + expenses.length })
+      setShows(showData)
 
-    // Merge into activity feed
-    const merged = [
-      ...sales.map(r => ({ ...r, type: 'sale', amount: r.sale_price, pct: r.pct_of_market, who: r.profiles?.full_name })),
-      ...buys.map(r => ({ ...r, type: 'buy', amount: r.amount_paid, pct: r.pct_of_market, who: r.profiles?.full_name })),
-      ...expenses.map(r => ({ ...r, type: 'expense', amount: r.amount })),
-    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      // Merge into activity feed
+      const merged = [
+        ...sales.map(r => ({ ...r, type: 'sale', amount: r.sale_price, pct: r.pct_of_market, who: r.profiles?.full_name })),
+        ...buys.map(r => ({ ...r, type: 'buy', amount: r.amount_paid, pct: r.pct_of_market, who: r.profiles?.full_name })),
+        ...expenses.map(r => ({ ...r, type: 'expense', amount: r.amount })),
+      ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
-    setActivity(merged)
-    setLoading(false)
+      setActivity(merged)
+    } catch (e) {
+      console.error('Failed to load dashboard data:', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   function selectShow(id) {

@@ -35,8 +35,12 @@ export default function ProfilePage() {
   }
 
   async function handleSignOut() {
-    await signOut()
-    navigate('/login')
+    try {
+      await signOut()
+      navigate('/login')
+    } catch (e) {
+      setMsg('Error signing out: ' + e.message)
+    }
   }
 
   return (

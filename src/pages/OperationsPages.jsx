@@ -169,7 +169,7 @@ export function InventoryPage() {
     } finally { setSaving(false) }
   }
 
-  const filtered = rows.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
+  const filtered = rows.filter(r => (r.name || '').toLowerCase().includes(search.toLowerCase()))
 
   return (
     <div style={{ paddingTop: 12 }}>
@@ -267,7 +267,7 @@ export function ContactsPage() {
         : rows.map((r,i) => (
           <div key={r.id} style={{ background: C.surface, borderRadius: 14, padding: '12px 13px', marginBottom: 8, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11 }}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: AVATAR_COLORS[i%AVATAR_COLORS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-              {r.name[0].toUpperCase()}
+              {r.name?.[0]?.toUpperCase() ?? '?'}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.name}</div>

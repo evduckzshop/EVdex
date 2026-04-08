@@ -89,9 +89,11 @@ export function useContacts() { return useTable('contacts') }
 export function useActivityLogs() {
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const fetch = useCallback(async (limit = 50) => {
     setLoading(true)
+    setError(null)
     try {
       const { data, error } = await supabase
         .from('activity_logs')
@@ -100,10 +102,12 @@ export function useActivityLogs() {
         .limit(limit)
       if (error) throw error
       setLogs(data)
+    } catch (e) {
+      setError(e.message)
     } finally {
       setLoading(false)
     }
   }, [])
 
-  return { logs, loading, fetch }
+  return { logs, loading, error, fetch }
 }
