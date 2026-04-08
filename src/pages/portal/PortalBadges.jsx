@@ -2,12 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { C } from '../../components/layout/CustomerLayout'
-
-const BADGE_EMOJIS = {
-  duck: '🦆', star: '⭐', fire: '🔥', trophy: '🏆',
-  money: '💰', whale: '🐳', bronze: '🥉', silver: '🥈',
-  gold: '🥇', diamond: '💎',
-}
+import { BadgeCard } from '../../components/ui/BadgeCard'
 
 export default function PortalBadges() {
   const { user } = useAuth()
@@ -48,11 +43,10 @@ export default function PortalBadges() {
   if (loading) return <div style={{ textAlign: 'center', color: C.text3, padding: 40 }}>Loading...</div>
 
   const earned = allBadges.filter(b => earnedIds.has(b.id))
-  const locked = allBadges.filter(b => !earnedIds.has(b.id))
 
   const categories = [
     { key: 'milestone', label: 'Milestones' },
-    { key: 'spending',  label: 'Spending' },
+    { key: 'spending',  label: 'Collector Progression' },
     { key: 'tier',      label: 'Tier Achievements' },
     { key: 'special',   label: 'Special' },
   ]
@@ -94,47 +88,14 @@ export default function PortalBadges() {
               {cat.label}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-              {catBadges.map(badge => {
-                const isEarned = earnedIds.has(badge.id)
-                const earnedAt = earnedMap[badge.id]
-                return (
-                  <div key={badge.id} style={{
-                    background: isEarned ? C.surface : C.surface2,
-                    borderRadius: 14, padding: '14px 12px',
-                    border: `1px solid ${isEarned ? 'rgba(167,139,250,.2)' : C.border}`,
-                    opacity: isEarned ? 1 : 0.5,
-                    position: 'relative',
-                  }}>
-                    {!isEarned && (
-                      <div style={{
-                        position: 'absolute', top: 10, right: 10,
-                        width: 18, height: 18, borderRadius: '50%',
-                        background: 'rgba(255,255,255,.05)', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                          <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="#475569" strokeWidth="1.3"/>
-                          <path d="M5 7V5a3 3 0 016 0v2" stroke="#475569" strokeWidth="1.3" strokeLinecap="round"/>
-                        </svg>
-                      </div>
-                    )}
-                    <div style={{ fontSize: 28, marginBottom: 6 }}>
-                      {isEarned ? (BADGE_EMOJIS[badge.icon] || '🏅') : '🔒'}
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: isEarned ? C.text : C.text3, marginBottom: 2 }}>
-                      {badge.name}
-                    </div>
-                    <div style={{ fontSize: 10, color: C.text3, lineHeight: 1.3 }}>
-                      {badge.description}
-                    </div>
-                    {isEarned && earnedAt && (
-                      <div style={{ fontSize: 9, color: '#A78BFA', marginTop: 6, fontWeight: 600 }}>
-                        Earned {new Date(earnedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+              {catBadges.map(badge => (
+                <BadgeCard
+                  key={badge.id}
+                  badge={badge}
+                  isEarned={earnedIds.has(badge.id)}
+                  earnedAt={earnedMap[badge.id]}
+                />
+              ))}
             </div>
           </div>
         )

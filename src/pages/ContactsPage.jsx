@@ -4,6 +4,7 @@ import { useContacts, useSales, useBuys } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
 import { supabase, inviteCustomer, deleteCustomer } from '../lib/supabase'
 import { C, Label, Input, Select, ChipGroup, CtaButton, GhostButton, Toast, RecordCard } from '../components/ui/FormComponents'
+import { BadgeCard } from '../components/ui/BadgeCard'
 
 const AVATAR_COLORS = ['#1E40AF','#065F46','#78350F','#1E3A8A','#7C2D12','#1E3A5F']
 const pillColor = r => r === 'Buyer' ? '#60A5FA' : r === 'Seller' ? C.red : r === 'Wholesaler' ? C.green : C.amber
@@ -171,6 +172,7 @@ export function ContactDetailPage() {
 
   // Customer portal invite state
   const [customerLink, setCustomerLink] = useState(null) // null = loading, false = not linked, object = linked
+  const [customerBadges, setCustomerBadges] = useState([])
   const [showInvite, setShowInvite] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteName, setInviteName] = useState('')
@@ -179,15 +181,31 @@ export function ContactDetailPage() {
 
   useEffect(() => { fetch(); fetchSales(); fetchBuys() }, [])
 
-  // Check if this contact is linked to a customer account
+  // Check if this contact is linked to a customer account + load badges
   useEffect(() => {
     if (!id) return
-    supabase.from('customers')
-      .select('id, display_name, email, created_at, accepted_at')
-      .eq('contact_id', id)
-      .maybeSingle()
-      .then(({ data }) => setCustomerLink(data || false))
-      .catch(() => setCustomerLink(false))
+    async function loadCustomerData() {
+      try {
+        const { data: customer } = await supabase.from('customers')
+          .select('id, display_name, email, created_at, accepted_at')
+          .eq('contact_id', id)
+          .maybeSingle()
+
+        if (!customer) { setCustomerLink(false); return }
+        setCustomerLink(customer)
+
+        // Load badges for this customer
+        const { data: badges } = await supabase.from('customer_badges')
+          .select('*, badge_definitions(*)')
+          .eq('customer_id', customer.id)
+          .order('earned_at', { ascending: false })
+
+        if (badges) setCustomerBadges(badges)
+      } catch {
+        setCustomerLink(false)
+      }
+    }
+    loadCustomerData()
   }, [id])
 
   const contact = rows.find(r => r.id === id)
@@ -348,6 +366,26 @@ export function ContactDetailPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Customer Badges */}
+      {customerBadges.length > 0 && (
+        <>
+          <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Badges · {customerBadges.length} earned
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 12 }}>
+            {customerBadges.map(b => (
+              <BadgeCard
+                key={b.id}
+                badge={b.badge_definitions || {}}
+                isEarned={true}
+                earnedAt={b.earned_at}
+                size="small"
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {/* Invite Modal */}

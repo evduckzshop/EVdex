@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { C, TIER_COLORS } from '../../components/layout/CustomerLayout'
+import { BadgeChip } from '../../components/ui/BadgeCard'
 
 const TIER_ICONS = {
   bronze:  '🪿',
@@ -172,14 +173,7 @@ export default function PortalDashboard() {
           </div>
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 14, paddingBottom: 2 }}>
             {badges.map(b => (
-              <div key={b.id} style={{
-                flexShrink: 0, background: C.surface, borderRadius: 12,
-                padding: '10px 14px', border: `1px solid ${C.border}`,
-                textAlign: 'center', minWidth: 80,
-              }}>
-                <div style={{ fontSize: 20, marginBottom: 4 }}>{getBadgeEmoji(b.badge_definitions?.icon)}</div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{b.badge_definitions?.name}</div>
-              </div>
+              <BadgeChip key={b.id} badge={b.badge_definitions || {}} isEarned={true} />
             ))}
           </div>
         </>
@@ -225,11 +219,3 @@ export default function PortalDashboard() {
   )
 }
 
-function getBadgeEmoji(icon) {
-  const map = {
-    duck: '🦆', star: '⭐', fire: '🔥', trophy: '🏆',
-    money: '💰', whale: '🐳', bronze: '🥉', silver: '🥈',
-    gold: '🥇', diamond: '💎',
-  }
-  return map[icon] || '🏅'
-}
