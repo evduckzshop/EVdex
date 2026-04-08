@@ -146,21 +146,28 @@ export async function inviteCustomer({ email, fullName, contactId }) {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session?.access_token) throw new Error('Not authenticated — please log in again')
 
-  const { data, error } = await supabase.functions.invoke('invite-customer', {
-    body: { email, fullName, contactId },
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
-  })
+  // Call edge function directly via fetch to get the full error body
+  const res = await fetch(
+    `${supabaseUrl}/functions/v1/invite-customer`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': supabaseAnonKey,
+      },
+      body: JSON.stringify({ email, fullName, contactId }),
+    }
+  )
 
-  if (error) {
-    const msg = error?.message || 'Edge Function error'
-    console.error('invite-customer error:', error)
-    console.error('invite-customer data:', data)
-    throw new Error(msg)
+  const result = await res.json()
+  console.log('invite-customer response:', res.status, result)
+
+  if (!res.ok) {
+    throw new Error(result?.error || `Invite failed (${res.status})`)
   }
-  if (data?.error) throw new Error(data.error)
-  return data
+
+  return result
 }
 
 // ── Admin: deactivate user ────────────────────────────────────

@@ -1,8 +1,3 @@
-// supabase/functions/invite-customer/index.ts
-// Deploy with: supabase functions deploy invite-customer
-// Secrets needed: SITE_URL (set via dashboard)
-// SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY are auto-injected
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -17,50 +12,41 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    const siteUrl = Deno.env.get('SITE_URL') ?? 'http://localhost:3000'
+
     // ── 1. Verify caller is authenticated admin ───────────────
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) throw new Error('Missing authorization header')
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    const siteUrl = Deno.env.get('SITE_URL') ?? 'http://localhost:3000'
-
-    const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    })
-
-    const { data: { user: caller }, error: authError } = await anonClient.auth.getUser()
-    if (authError || !caller) throw new Error('Unauthorized')
-
-    // Check caller is admin
-    const { data: callerProfile, error: profileError } = await anonClient
-      .from('profiles')
-      .select('role, full_name')
-      .eq('id', caller.id)
-      .single()
-
-    if (profileError || callerProfile?.role !== 'admin') {
-      throw new Error('Only admins can invite customers')
-    }
-
-    // ── 2. Parse & validate request body ──────────────────────
-    const { email, fullName, contactId } = await req.json()
-
-    if (!email || !fullName) {
-      throw new Error('email and fullName are required')
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw new Error('Invalid email format')
-    }
-
-    // ── 3. Use service role for privileged operations ─────────
+    // Use service role client for ALL db operations (bypasses RLS)
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
-    // ── 4. Validate contact_id if provided ────────────────────
+    // Verify the JWT token to get the caller's user id
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user: caller }, error: authError } = await adminClient.auth.getUser(token)
+    if (authError || !caller) throw new Error('Unauthorized: invalid token')
+
+    // Check caller is admin via profiles table (server-side, not client-supplied)
+    const { data: callerProfile, error: profileError } = await adminClient
+      .from('profiles')
+      .select('role')
+      .eq('id', caller.id)
+      .single()
+
+    if (profileError) throw new Error('Failed to verify admin role')
+    if (callerProfile?.role !== 'admin') throw new Error('Only admins can invite customers')
+
+    // ── 2. Parse & validate request body ──────────────────────
+    const { email, fullName, contactId } = await req.json()
+
+    if (!email || !fullName) throw new Error('email and fullName are required')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Invalid email format')
+
+    // ── 3. Validate contact_id if provided ────────────────────
     if (contactId) {
       const { data: contact, error: contactError } = await adminClient
         .from('contacts')
@@ -68,66 +54,56 @@ serve(async (req) => {
         .eq('id', contactId)
         .single()
 
-      if (contactError || !contact) {
-        throw new Error('Contact not found')
-      }
+      if (contactError || !contact) throw new Error('Contact not found')
 
-      // Check contact not already linked
       const { data: existingLink } = await adminClient
         .from('customers')
         .select('id')
         .eq('contact_id', contactId)
         .maybeSingle()
 
-      if (existingLink) {
-        throw new Error('This contact is already linked to a customer account')
-      }
+      if (existingLink) throw new Error('This contact is already linked to a customer account')
     }
 
-    // ── 5. Create the auth user via invite ────────────────────
+    // ── 4. Create the auth user via invite ────────────────────
     const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
       email,
       {
-        data: {
-          full_name: fullName,
-          role: 'customer',
-        },
+        data: { full_name: fullName, role: 'customer' },
         redirectTo: `${siteUrl}/reset-password`,
       }
     )
 
-    if (inviteError) {
-      // Supabase returns a clear error if email already exists
-      throw new Error(inviteError.message || 'Failed to send invite')
-    }
+    if (inviteError) throw new Error(inviteError.message || 'Failed to send invite')
 
     const newUserId = inviteData.user?.id
     if (!newUserId) throw new Error('Failed to create user account')
 
-    // ── 6. Wait for the profile trigger to fire ───────────────
-    // The handle_new_user() trigger creates the profiles row
-    // We need it to exist before inserting into customers (FK)
-    let profileReady = false
-    for (let i = 0; i < 10; i++) {
-      const { data: p } = await adminClient
-        .from('profiles')
-        .select('id')
-        .eq('id', newUserId)
-        .maybeSingle()
-      if (p) { profileReady = true; break }
-      await new Promise(r => setTimeout(r, 500))
-    }
+    // ── 5. Ensure profile exists ──────────────────────────────
+    // The handle_new_user trigger may or may not have fired yet.
+    // Check first, then create if missing.
+    const { data: existingProfile } = await adminClient
+      .from('profiles')
+      .select('id')
+      .eq('id', newUserId)
+      .maybeSingle()
 
-    if (!profileReady) {
-      // Create profile manually as fallback
-      await adminClient.from('profiles').insert({
+    if (!existingProfile) {
+      const { error: profileInsertError } = await adminClient.from('profiles').insert({
         id: newUserId,
         full_name: fullName,
         role: 'customer',
       })
+      if (profileInsertError) {
+        // If it fails due to race condition (trigger already created it), that's ok
+        if (!profileInsertError.message?.includes('duplicate')) {
+          await adminClient.auth.admin.deleteUser(newUserId)
+          throw new Error('Failed to create profile: ' + profileInsertError.message)
+        }
+      }
     }
 
-    // ── 7. Create customer record ─────────────────────────────
+    // ── 6. Create customer record ─────────────────────────────
     const customerRecord: Record<string, unknown> = {
       id: newUserId,
       display_name: fullName,
@@ -145,39 +121,37 @@ serve(async (req) => {
       .insert(customerRecord)
 
     if (customerError) {
-      // Rollback: delete the auth user
       await adminClient.auth.admin.deleteUser(newUserId)
       throw new Error('Failed to create customer record: ' + customerError.message)
     }
 
-    // ── 8. Update contact email if provided ───────────────────
+    // ── 7. Update contact email ───────────────────────────────
     if (contactId) {
       await adminClient
         .from('contacts')
         .update({ email: email.toLowerCase() })
         .eq('id', contactId)
+        .catch(() => {})
     }
 
-    // ── 9. Log the invite ─────────────────────────────────────
+    // ── 8. Log invite + activity (non-critical) ───────────────
     await adminClient.from('invites').insert({
       email: email.toLowerCase(),
       role: 'customer',
       contact_id: contactId || null,
       invited_by: caller.id,
       accepted: false,
-    }).catch(() => {}) // Non-critical, don't fail if invites table has issues
+    }).catch(() => {})
 
-    // ── 10. Log activity ──────────────────────────────────────
     await adminClient.from('activity_logs').insert({
       user_id: caller.id,
       action_type: 'invite_customer',
       entity_type: 'customers',
       entity_id: newUserId,
-      summary: `Invited customer: ${fullName} (${email})${contactId ? ' — linked to contact' : ''}`,
-      after_data: { email, fullName, contactId },
-    }).catch(() => {}) // Non-critical
+      summary: `Invited customer: ${fullName} (${email})`,
+    }).catch(() => {})
 
-    // ── 11. Award Bronze Duck badge ───────────────────────────
+    // ── 9. Award Bronze Duck badge (non-critical) ─────────────
     const { data: bronzeBadge } = await adminClient
       .from('badge_definitions')
       .select('id')
@@ -198,13 +172,9 @@ serve(async (req) => {
       }).catch(() => {})
     }
 
-    // ── 12. Return success ────────────────────────────────────
+    // ── 10. Success ───────────────────────────────────────────
     return new Response(
-      JSON.stringify({
-        success: true,
-        customerId: newUserId,
-        message: `Invite sent to ${email}`,
-      }),
+      JSON.stringify({ success: true, customerId: newUserId, message: `Invite sent to ${email}` }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
   } catch (error) {
