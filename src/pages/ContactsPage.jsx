@@ -40,7 +40,7 @@ export default function ContactsListPage() {
   function switchLayout(l) { setLayout(l); localStorage.setItem(LAYOUT_KEY, l) }
 
   let filtered = rows.filter(r => {
-    if (search && !(r.name || '').toLowerCase().includes(search.toLowerCase())) return false
+    if (search && !(r.name || '').toLowerCase().includes(search.toLowerCase()) && !(r.nickname || '').toLowerCase().includes(search.toLowerCase())) return false
     if (filterRole && r.role !== filterRole) return false
     if (filterPay && r.preferred_pay !== filterPay) return false
     return true
@@ -128,7 +128,7 @@ export default function ContactsListPage() {
                   {r.name?.[0]?.toUpperCase() ?? '?'}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.name}{r.nickname ? <span style={{ fontWeight: 400, color: C.text3 }}> ({r.nickname})</span> : ''}</div>
                   <div style={{ fontSize: 10, color: C.text3, marginTop: 2 }}>
                     {r.preferred_pay || ''}{r.phone ? ` · ${r.phone}` : ''}{r.instagram ? ` · @${r.instagram.replace(/^@/, '')}` : ''}{txCount > 0 ? ` · ${txCount} txn` : ''}
                   </div>
@@ -144,7 +144,7 @@ export default function ContactsListPage() {
               return (
                 <div key={r.id} onClick={() => navigate(`/contacts/${r.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 13px', cursor: 'pointer', borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : 'none' }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: pillColor(r.role), flexShrink: 0 }} />
-                  <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
+                  <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.nickname ? <span style={{ color: C.text3, fontWeight: 400 }}> ({r.nickname})</span> : ''}</div>
                   {txCount > 0 && <span style={{ fontSize: 10, color: C.text3 }}>{txCount} txn</span>}
                   <span style={{ fontSize: 10, color: C.text3 }}>{r.role}</span>
                 </div>
@@ -209,7 +209,7 @@ export function ContactDetailPage() {
             {contact.name?.[0]?.toUpperCase() ?? '?'}
           </div>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: -0.5 }}>{contact.name}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: -0.5 }}>{contact.name}{contact.nickname ? <span style={{ fontSize: 14, fontWeight: 400, color: 'rgba(255,255,255,.45)' }}> ({contact.nickname})</span> : ''}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
               <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: pillBg(contact.role), color: pillColor(contact.role) }}>{contact.role}</span>
               {contact.preferred_pay && <span style={{ fontSize: 11, color: 'rgba(255,255,255,.45)' }}>{contact.preferred_pay}</span>}
@@ -325,6 +325,7 @@ export function ContactEditPage() {
   const contact = rows.find(r => r.id === id)
 
   const [name, setName] = useState('')
+  const [nickname, setNickname] = useState('')
   const [role, setRole] = useState('Seller')
   const [phone, setPhone] = useState('')
   const [instagram, setInstagram] = useState('')
@@ -334,6 +335,7 @@ export function ContactEditPage() {
   useEffect(() => {
     if (contact) {
       setName(contact.name || '')
+      setNickname(contact.nickname || '')
       setRole(contact.role || 'Seller')
       setPhone(contact.phone || '')
       setInstagram(contact.instagram || '')
@@ -349,7 +351,7 @@ export function ContactEditPage() {
     if (!name.trim()) { setMsg({ text: 'Name is required.', type: 'error' }); return }
     setSaving(true)
     try {
-      await update(id, { name: name.trim(), role, phone: phone || null, instagram: instagram || null, preferred_pay: pay, notes: notes || null })
+      await update(id, { name: name.trim(), nickname: nickname.trim() || null, role, phone: phone || null, instagram: instagram || null, preferred_pay: pay, notes: notes || null })
       setMsg({ text: 'Contact updated!', type: 'success' })
       setTimeout(() => navigate(`/contacts/${id}`, { replace: true }), 600)
     } catch (e) { setMsg({ text: 'Error: ' + e.message, type: 'error' }) }
@@ -367,6 +369,8 @@ export function ContactEditPage() {
 
       <Label top={false}>Name</Label>
       <Input value={name} onChange={e => setName(e.target.value)} placeholder="Name or business" />
+      <Label>Nickname / alias (optional)</Label>
+      <Input value={nickname} onChange={e => setNickname(e.target.value)} placeholder="e.g. CardKing, TCGDeals" />
       <Label>Role</Label>
       <Select value={role} onChange={e => setRole(e.target.value)}>{['Seller','Buyer','Both','Wholesaler'].map(r => <option key={r}>{r}</option>)}</Select>
       <Label>Phone number</Label>
@@ -387,23 +391,30 @@ export function ContactEditPage() {
 
 // ── CONTACT ADD PAGE (/contacts/add) ────────────────────────────
 export function ContactAddPage() {
-  const { insert } = useContacts()
+  const { insert, rows, fetch } = useContacts()
   const navigate = useNavigate()
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [saving, setSaving] = useState(false)
 
   const [name, setName] = useState('')
+  const [nickname, setNickname] = useState('')
   const [role, setRole] = useState('Seller')
   const [phone, setPhone] = useState('')
   const [instagram, setInstagram] = useState('')
   const [pay, setPay] = useState('Cash')
   const [notes, setNotes] = useState('')
 
+  useEffect(() => { fetch() }, [])
+
+  // Duplicate detection
+  const duplicates = name.trim().length > 1 ? rows.filter(r => (r.name || '').toLowerCase() === name.trim().toLowerCase()) : []
+
   async function handleSave() {
     if (!name.trim()) { setMsg({ text: 'Please enter a name.', type: 'error' }); return }
+    if (duplicates.length > 0 && !nickname.trim()) { setMsg({ text: 'A contact with this name exists. Add a nickname to distinguish them, or use a different name.', type: 'error' }); return }
     setSaving(true)
     try {
-      await insert({ name: name.trim(), role, phone: phone || null, instagram: instagram || null, preferred_pay: pay, notes: notes || null })
+      await insert({ name: name.trim(), nickname: nickname.trim() || null, role, phone: phone || null, instagram: instagram || null, preferred_pay: pay, notes: notes || null })
       setMsg({ text: 'Contact saved!', type: 'success' })
       setTimeout(() => navigate('/contacts', { replace: true }), 600)
     } catch (e) { setMsg({ text: 'Error: ' + e.message, type: 'error' }) }
@@ -421,6 +432,14 @@ export function ContactAddPage() {
 
       <Label top={false}>Name</Label>
       <Input value={name} onChange={e => setName(e.target.value)} placeholder="Name or business" />
+      {duplicates.length > 0 && (
+        <div style={{ background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.2)', borderRadius: 10, padding: '10px 14px', marginTop: 8, fontSize: 12, color: '#F59E0B' }}>
+          A contact named "{name.trim()}" already exists{duplicates[0].nickname ? ` (${duplicates[0].nickname})` : ''}. Add a nickname below to distinguish them.
+          <div onClick={() => navigate(`/contacts/${duplicates[0].id}`)} style={{ color: '#3B82F6', cursor: 'pointer', marginTop: 4, fontWeight: 600 }}>View existing contact →</div>
+        </div>
+      )}
+      <Label>Nickname / alias (optional)</Label>
+      <Input value={nickname} onChange={e => setNickname(e.target.value)} placeholder="e.g. CardKing, TCGDeals" />
       <Label>Role</Label>
       <Select value={role} onChange={e => setRole(e.target.value)}>{['Seller','Buyer','Both','Wholesaler'].map(r => <option key={r}>{r}</option>)}</Select>
       <Label>Phone number</Label>

@@ -396,7 +396,7 @@ export function AutocompleteInput({ contacts, value, onSelect, placeholder }) {
   }, [value, contacts])
 
   const filtered = input.length > 0
-    ? contacts.filter(c => (c.name || '').toLowerCase().includes(input.toLowerCase()))
+    ? contacts.filter(c => (c.name || '').toLowerCase().includes(input.toLowerCase()) || (c.nickname || '').toLowerCase().includes(input.toLowerCase()))
     : contacts
 
   function pick(c) {
@@ -421,7 +421,7 @@ export function AutocompleteInput({ contacts, value, onSelect, placeholder }) {
         <div style={{ width: 26, height: 26, borderRadius: '50%', background: selected.color || '#1E40AF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
           {selected.name?.[0]?.toUpperCase()}
         </div>
-        <div style={{ fontSize: 12, fontWeight: 500, color: C.text, flex: 1 }}>{selected.name} · {selected.preferred_pay}</div>
+        <div style={{ fontSize: 12, fontWeight: 500, color: C.text, flex: 1 }}>{selected.name}{selected.nickname ? ` (${selected.nickname})` : ''} · {selected.preferred_pay}</div>
         <div onClick={clear} style={{ fontSize: 11, color: C.accent2, cursor: 'pointer' }}>Change</div>
       </div>
     )
@@ -449,7 +449,7 @@ export function AutocompleteInput({ contacts, value, onSelect, placeholder }) {
                 {c.name?.[0]?.toUpperCase()}
               </div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{c.name}</div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{c.name}{c.nickname ? <span style={{ color: C.text3, fontWeight: 400 }}> ({c.nickname})</span> : ''}</div>
                 <div style={{ fontSize: 10, color: C.text3 }}>{c.role} · {c.preferred_pay}</div>
               </div>
             </div>
