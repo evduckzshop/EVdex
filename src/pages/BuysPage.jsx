@@ -4,6 +4,7 @@ import { useBuys, useContacts, useShows } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
 import { uploadPhoto } from '../lib/supabase'
 import { C, Label, Input, Select, ChipGroup, DealCalc, CtaButton, GhostButton, Toast, RecordCard, AutocompleteInput, PaymentPicker } from '../components/ui/FormComponents'
+import LotCalculator, { entriesToLotData, lotDataToEntries, computeLotTotals } from '../components/ui/LotCalculator'
 import QuickLog from '../components/ui/QuickLog'
 
 export default function BuysPage() {
@@ -35,6 +36,7 @@ export default function BuysPage() {
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [quickLog, setQuickLog] = useState(false)
+  const [lotEntries, setLotEntries] = useState([{ market: '', amount: '', pct: '', description: '', showDesc: false }])
 
   const isLot = buyType === 'Lot'
   const isSlab = buyType === 'Slabs'
@@ -57,6 +59,9 @@ export default function BuysPage() {
       setNotes(editRecord.notes || '')
       setShowId(editRecord.show_id || '')
       setPhotoName(editRecord.photo_url ? 'Existing photo' : '')
+      if (editRecord.lot_entries?.length) {
+        setLotEntries(lotDataToEntries(editRecord.lot_entries))
+      }
     }
   }, [editRecord?.id])
 
@@ -69,7 +74,23 @@ export default function BuysPage() {
 
   async function handleSave() {
     if (!desc.trim()) { setMsg({ text: 'Please enter a description.', type: 'error' }); return }
-    if (!paid) { setMsg({ text: 'Please enter the amount paid.', type: 'error' }); return }
+
+    let finalPaid = parseFloat(paid)
+    let finalMarket = parseFloat(market) || null
+    let finalPct = parseFloat(pct) || null
+    let lotData = null
+
+    if (isLot) {
+      const totals = computeLotTotals(lotEntries)
+      finalPaid = totals.totalPrice
+      finalMarket = totals.totalMarket || null
+      finalPct = totals.avgPct
+      lotData = entriesToLotData(lotEntries)
+    }
+
+    if (!finalPaid && !isLot) { setMsg({ text: 'Please enter the amount paid.', type: 'error' }); return }
+    if (isLot && finalPaid <= 0) { setMsg({ text: 'Please fill in at least one entry.', type: 'error' }); return }
+
     setSaving(true)
     try {
       let photo_url = editRecord?.photo_url || null
@@ -84,9 +105,10 @@ export default function BuysPage() {
         buy_type: buyType,
         qty: isLot ? null : isSlab ? null : (parseInt(qty) || null),
         condition: isLot ? null : isSlab ? (qty ? `${qty} ${condition}` : condition) : condition,
-        market_value: parseFloat(market) || null,
-        amount_paid: parseFloat(paid),
-        pct_of_market: parseFloat(pct) || null,
+        market_value: finalMarket,
+        amount_paid: finalPaid,
+        pct_of_market: finalPct,
+        lot_entries: lotData,
         source: source || null,
         source_contact_id: sourceContactId || null,
         payment,
@@ -116,7 +138,7 @@ export default function BuysPage() {
   function resetForm() {
     setBuyType('Singles'); setDesc(''); setQty(''); setCondition('NM')
     setMarket(''); setPaid(''); setPct(''); setSource(''); setSourceContactId(null); setPayment('Cash')
-    setNotes(''); setShowId(''); setPhotoFile(null); setPhotoName('')
+    setNotes(''); setShowId(''); setPhotoFile(null); setPhotoName(''); setLotEntries([{ market: '', amount: '', pct: '', description: '', showDesc: false }])
   }
 
   return (
@@ -194,12 +216,16 @@ export default function BuysPage() {
         </div>
       )}
 
-      <DealCalc
-        market={market} setMarket={setMarket}
-        amount={paid} setAmount={setPaid}
-        pct={pct} setPct={setPct}
-        isSale={false} lockRef={lockRef}
-      />
+      {isLot ? (
+        <LotCalculator entries={lotEntries} setEntries={setLotEntries} isSale={false} />
+      ) : (
+        <DealCalc
+          market={market} setMarket={setMarket}
+          amount={paid} setAmount={setPaid}
+          pct={pct} setPct={setPct}
+          isSale={false} lockRef={lockRef}
+        />
+      )}
 
       <Label>Sourced from</Label>
       <AutocompleteInput contacts={contacts} value={source} contactId={sourceContactId} onSelect={(name, cid) => { setSource(name); setSourceContactId(cid) }} placeholder="Seller name or search contacts…" />

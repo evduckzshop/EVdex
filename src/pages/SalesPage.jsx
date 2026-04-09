@@ -5,6 +5,7 @@ import { useContacts } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
 import { uploadPhoto } from '../lib/supabase'
 import { C, Label, Input, Select, ChipGroup, DealCalc, CtaButton, GhostButton, Toast, RecordCard, AutocompleteInput, PaymentPicker } from '../components/ui/FormComponents'
+import LotCalculator, { entriesToLotData, lotDataToEntries, computeLotTotals } from '../components/ui/LotCalculator'
 import QuickLog from '../components/ui/QuickLog'
 
 export default function SalesPage() {
@@ -35,6 +36,9 @@ export default function SalesPage() {
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [quickLog, setQuickLog] = useState(false)
+  const [lotEntries, setLotEntries] = useState([{ market: '', amount: '', pct: '', description: '', showDesc: false }])
+
+  const isLot = saleType === 'Lot'
 
   useEffect(() => { fetch(); fetchContacts(); fetchShows() }, [])
 
@@ -60,6 +64,9 @@ export default function SalesPage() {
       setPayment(editRecord.payment || 'Cash')
       setShowId(editRecord.show_id || '')
       setPhotoName(editRecord.photo_url ? 'Existing photo' : '')
+      if (editRecord.lot_entries?.length) {
+        setLotEntries(lotDataToEntries(editRecord.lot_entries))
+      }
     }
   }, [editRecord?.id])
 
@@ -72,7 +79,24 @@ export default function SalesPage() {
 
   async function handleSave() {
     if (!desc.trim()) { setMsg({ text: 'Please enter a description.', type: 'error' }); return }
-    if (!price) { setMsg({ text: 'Please enter a sale price.', type: 'error' }); return }
+
+    // For lots, compute totals from entries
+    let finalPrice = parseFloat(price)
+    let finalMarket = parseFloat(market) || null
+    let finalPct = parseFloat(pct) || null
+    let lotData = null
+
+    if (isLot) {
+      const totals = computeLotTotals(lotEntries)
+      finalPrice = totals.totalPrice
+      finalMarket = totals.totalMarket || null
+      finalPct = totals.avgPct
+      lotData = entriesToLotData(lotEntries)
+    }
+
+    if (!finalPrice && !isLot) { setMsg({ text: 'Please enter a sale price.', type: 'error' }); return }
+    if (isLot && finalPrice <= 0) { setMsg({ text: 'Please fill in at least one entry.', type: 'error' }); return }
+
     setSaving(true)
     try {
       let photo_url = editRecord?.photo_url || null
@@ -85,10 +109,11 @@ export default function SalesPage() {
       const record = {
         description: desc.trim(),
         sale_type: saleType === 'Other' ? (customSaleType.trim() || 'Other') : saleType,
-        market_value: parseFloat(market) || null,
-        sale_price: parseFloat(price),
-        pct_of_market: parseFloat(pct) || null,
+        market_value: finalMarket,
+        sale_price: finalPrice,
+        pct_of_market: finalPct,
         cost_basis: parseFloat(cost) || null,
+        lot_entries: lotData,
         buyer: buyer || null,
         buyer_contact_id: buyerContactId || null,
         payment,
@@ -115,7 +140,7 @@ export default function SalesPage() {
   }
 
   function resetForm() {
-    setSaleType('Single card'); setCustomSaleType(''); setDesc(''); setMarket(''); setPrice(''); setPct('')
+    setSaleType('Single card'); setCustomSaleType(''); setDesc(''); setMarket(''); setPrice(''); setPct(''); setLotEntries([{ market: '', amount: '', pct: '', description: '', showDesc: false }])
     setCost(''); setBuyer(''); setBuyerContactId(null); setPayment('Cash'); setShowId(''); setPhotoFile(null); setPhotoName('')
   }
 
@@ -155,14 +180,18 @@ export default function SalesPage() {
       <PaymentPicker options={['Cash','Venmo','Zelle','Card']} value={payment} onChange={setPayment} />
 
       <Label>Card / item name</Label>
-      <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Charizard ex SAR 151" />
+      <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder={isLot ? "e.g. Bulk lot from card show" : "e.g. Charizard ex SAR 151"} />
 
-      <DealCalc
-        market={market} setMarket={setMarket}
-        amount={price} setAmount={setPrice}
-        pct={pct} setPct={setPct}
-        isSale lockRef={lockRef}
-      />
+      {isLot ? (
+        <LotCalculator entries={lotEntries} setEntries={setLotEntries} isSale />
+      ) : (
+        <DealCalc
+          market={market} setMarket={setMarket}
+          amount={price} setAmount={setPrice}
+          pct={pct} setPct={setPct}
+          isSale lockRef={lockRef}
+        />
+      )}
 
       {/* Cost basis hidden for now
       <Label>Cost basis ($)</Label>

@@ -200,7 +200,8 @@ function DealSlider({ pctNum, barColor, onPct, mktNum, amtNum }) {
   )
 }
 
-export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, isSale = false, lockRef }) {
+export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, isSale = false, lockRef, collapsible = false, compact = false, label }) {
+  const [sliderOpen, setSliderOpen] = useState(!collapsible)
   function onMarket(v) {
     if (lockRef.current) return; lockRef.current = true
     setMarket(v)
@@ -246,11 +247,17 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
   }
 
   return (
-    <div style={{ background: C.surface2, borderRadius: 14, padding: 14, marginTop: 12, border: `1px solid ${C.border}` }}>
-      <div style={{ fontSize: 10, color: C.text3, fontWeight: 600, letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 10 }}>
-        {isSale ? 'Market calculator' : 'Deal calculator'}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+    <div style={{ background: C.surface2, borderRadius: compact ? 12 : 14, padding: compact ? 12 : 14, marginTop: compact ? 0 : 12, border: `1px solid ${C.border}` }}>
+      {label ? (
+        <div style={{ fontSize: 10, color: C.text3, fontWeight: 600, letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 10 }}>
+          {label}
+        </div>
+      ) : !compact && (
+        <div style={{ fontSize: 10, color: C.text3, fontWeight: 600, letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 10 }}>
+          {isSale ? 'Market calculator' : 'Deal calculator'}
+        </div>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: collapsible && !sliderOpen ? 0 : 10 }}>
         {[
           { label: 'Total market ($)', val: market, set: onMarket, pctField: false },
           { label: isSale ? 'Sale price ($)' : 'You paid ($)', val: amount, set: onAmount, pctField: false },
@@ -260,45 +267,64 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
             <div style={{ fontSize: 9, color: C.text3, marginBottom: 4, fontWeight: 500 }}>{f.label}</div>
             <input
               type="number"
+              inputMode="decimal"
               value={f.val}
               onChange={e => f.set(e.target.value)}
               placeholder={f.pctField ? '—' : '0.00'}
               style={{
-                width: '100%', padding: '10px 8px',
+                width: '100%', padding: compact ? '8px 6px' : '10px 8px',
                 border: `1px solid ${f.pctField ? 'rgba(37,99,235,.35)' : C.border2}`,
                 background: f.pctField ? 'rgba(37,99,235,.05)' : C.surface,
-                borderRadius: 9, fontSize: 14, color: C.text,
+                borderRadius: 9, fontSize: compact ? 13 : 14, color: C.text,
                 fontFamily: 'inherit', outline: 'none', fontWeight: 600, textAlign: 'center',
+                boxSizing: 'border-box',
               }}
             />
           </div>
         ))}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '8px 0' }}>
-        <div style={{ flex: 1, height: 1, background: C.border }} />
-        <div style={{ fontSize: 8, color: C.text3, fontWeight: 600, letterSpacing: '.05em' }}>TYPE ANY FIELD — OTHERS AUTO-FILL</div>
-        <div style={{ flex: 1, height: 1, background: C.border }} />
-      </div>
-      <div style={{ background: C.surface3, borderRadius: 11, padding: '11px 13px', border: `1px solid ${C.border}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: 10, color: C.text3 }}>{isSale ? '% of market sold at' : '% of market paid'}</div>
-            <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -1, color: hasData ? barColor : C.text3 }}>
-              {hasData ? `${pctNum}%` : '— %'}
-            </div>
-          </div>
-          <div style={{ fontSize: 10, fontWeight: 700, padding: '4px 9px', borderRadius: 20, background: tagBg, color: tagColor }}>
-            {tagText}
-          </div>
+      {collapsible && (
+        <div onClick={() => setSliderOpen(!sliderOpen)} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+          padding: '6px 0 2px', cursor: 'pointer',
+        }}>
+          <div style={{ fontSize: 9, color: C.text3, fontWeight: 500 }}>{sliderOpen ? 'Hide slider' : 'Show slider'}</div>
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{ transform: sliderOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .2s ease' }}>
+            <path d="M3 4.5l3 3 3-3" stroke={C.text3} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </div>
-        <DealSlider pctNum={pctNum} barColor={barColor} onPct={onPct} mktNum={mktNum} amtNum={amtNum} />
-        {isSale && amtNum > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
-            <div style={{ fontSize: 10, color: C.text3 }}>Sale price</div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: barColor }}>${amtNum.toFixed(2)}</div>
+      )}
+      {sliderOpen && (
+        <>
+          {!collapsible && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '8px 0' }}>
+              <div style={{ flex: 1, height: 1, background: C.border }} />
+              <div style={{ fontSize: 8, color: C.text3, fontWeight: 600, letterSpacing: '.05em' }}>TYPE ANY FIELD — OTHERS AUTO-FILL</div>
+              <div style={{ flex: 1, height: 1, background: C.border }} />
+            </div>
+          )}
+          <div style={{ background: C.surface3, borderRadius: 11, padding: '11px 13px', border: `1px solid ${C.border}`, marginTop: collapsible ? 4 : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 10, color: C.text3 }}>{isSale ? '% of market sold at' : '% of market paid'}</div>
+                <div style={{ fontSize: compact ? 20 : 26, fontWeight: 700, letterSpacing: -1, color: hasData ? barColor : C.text3 }}>
+                  {hasData ? `${pctNum}%` : '— %'}
+                </div>
+              </div>
+              <div style={{ fontSize: 10, fontWeight: 700, padding: '4px 9px', borderRadius: 20, background: tagBg, color: tagColor }}>
+                {tagText}
+              </div>
+            </div>
+            <DealSlider pctNum={pctNum} barColor={barColor} onPct={onPct} mktNum={mktNum} amtNum={amtNum} />
+            {isSale && amtNum > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 10, color: C.text3 }}>Sale price</div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: barColor }}>${amtNum.toFixed(2)}</div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   )
 }
