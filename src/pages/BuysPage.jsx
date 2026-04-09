@@ -42,6 +42,7 @@ export default function BuysPage() {
 
   const isLot = buyType === 'Lot'
   const isSlab = buyType === 'Slabs'
+  const isSealed = buyType === 'Sealed'
 
   useEffect(() => { fetch(); fetchContacts(); fetchShows() }, [])
 
@@ -111,7 +112,7 @@ export default function BuysPage() {
         description: desc.trim(),
         buy_type: buyType,
         qty: isLot ? null : isSlab ? null : (parseInt(qty) || null),
-        condition: isLot ? null : isSlab ? (qty ? `${qty} ${condition}` : condition) : condition,
+        condition: isLot ? null : isSealed ? null : isSlab ? (qty ? `${qty} ${condition}` : condition) : condition,
         market_value: finalMarket,
         amount_paid: finalPaid,
         pct_of_market: finalPct,
@@ -208,7 +209,7 @@ export default function BuysPage() {
         </div>
       )}
 
-      {!isLot && !isSlab && (
+      {!isLot && !isSlab && !isSealed && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
             <Label>Qty</Label>
@@ -220,6 +221,13 @@ export default function BuysPage() {
               {['NM','LP','MP','HP','Mixed'].map(c => <option key={c}>{c}</option>)}
             </Select>
           </div>
+        </div>
+      )}
+
+      {isSealed && (
+        <div>
+          <Label>Qty</Label>
+          <Input type="number" value={qty} onChange={e => setQty(e.target.value)} placeholder="1" />
         </div>
       )}
 
