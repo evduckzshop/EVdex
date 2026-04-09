@@ -223,15 +223,13 @@ export default function EmployeesPage() {
                 {!p.avatar_url && (p.full_name?.[0]?.toUpperCase() || '?')}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   {p.full_name}
                   {p.id === myProfile?.id && <span style={{ fontSize: 9, color: C.text3 }}>(you)</span>}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 10, color: C.text3 }}>
-                    Joined {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                  </span>
                   {p.badge_title && <StaffBadgePill title={p.badge_title} color={p.badge_color} effect={p.badge_effect} size="small" />}
+                </div>
+                <div style={{ fontSize: 10, color: C.text3, marginTop: 2 }}>
+                  Joined {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

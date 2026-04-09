@@ -200,6 +200,29 @@ export default function SalesPage() {
         />
       )}
 
+      {/* Estimated earnings */}
+      {(() => {
+        const saleAmt = isLot
+          ? lotEntries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
+          : (parseFloat(price) || 0)
+        if (saleAmt <= 0) return null
+        const feeRate = payment === 'Cash' ? 0 : payment === 'Venmo' ? 0.09 : 0.06
+        const est = saleAmt * (1 - feeRate)
+        return (
+          <div style={{
+            background: C.surface2, borderRadius: 12, padding: '10px 14px', marginTop: 10,
+            border: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <div style={{ fontSize: 11, color: C.text3 }}>
+              Est. earnings {feeRate > 0 ? `(${Math.round(feeRate * 100)}% fee)` : '(no fee)'}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.green }}>
+              ${est.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Cost basis hidden for now
       <Label>Cost basis ($)</Label>
       <Input type="number" value={cost} onChange={e => setCost(e.target.value)} placeholder="0.00" />
