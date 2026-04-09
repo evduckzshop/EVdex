@@ -224,8 +224,6 @@ export default function LotCalculator({ entries, setEntries, isSale = false }) {
         </button>
       )}
 
-      {/* Bottom total bar */}
-      <TotalBar entries={entries} isSale={isSale} onAvgPctChange={distributeAvgPct} />
     </div>
   )
 }
