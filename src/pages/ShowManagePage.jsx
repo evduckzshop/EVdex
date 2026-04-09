@@ -5,8 +5,20 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { C, Label, Input, Select, CtaButton, GhostButton, Toast } from '../components/ui/FormComponents'
 
-const statusColor = s => s === 'completed' ? C.green : s === 'in_progress' ? C.amber : '#7F77DD'
-const statusBg = s => s === 'completed' ? 'rgba(16,185,129,.12)' : s === 'in_progress' ? 'rgba(245,158,11,.12)' : 'rgba(127,119,221,.12)'
+function getDisplayStatus(show) {
+  if (show.status === 'completed') return 'completed'
+  if (show.status === 'in_progress') return 'in_progress'
+  // Upcoming but date has passed → show as "passed"
+  if (show.event_date) {
+    const showDate = new Date(show.event_date + 'T23:59:59')
+    if (showDate < new Date()) return 'passed'
+  }
+  return 'upcoming'
+}
+
+const statusColor = s => s === 'completed' ? C.green : s === 'in_progress' ? C.amber : s === 'passed' ? C.red : '#7F77DD'
+const statusBg = s => s === 'completed' ? 'rgba(16,185,129,.12)' : s === 'in_progress' ? 'rgba(245,158,11,.12)' : s === 'passed' ? 'rgba(248,113,113,.12)' : 'rgba(127,119,221,.12)'
+const statusLabel = s => s === 'passed' ? 'Passed' : s.replace('_', ' ')
 const VIEW_KEY = 'evdex_show_view'
 
 export default function ShowManagePage() {
@@ -121,7 +133,9 @@ function ListView({ rows, loading, navigate, setSelectedId }) {
       <div style={{ height: 14 }} />
       {loading ? <div style={{ textAlign: 'center', color: '#475569', padding: 24 }}>Loading…</div>
         : rows.length === 0 ? <div style={{ textAlign: 'center', color: '#475569', padding: 24, fontSize: 13 }}>No shows yet.</div>
-        : rows.map(r => (
+        : rows.map(r => {
+          const ds = getDisplayStatus(r)
+          return (
           <div
             key={r.id}
             onClick={() => { setSelectedId(r.id); navigate(`/shows/manage?id=${r.id}`, { replace: true }) }}
@@ -134,12 +148,13 @@ function ListView({ rows, loading, navigate, setSelectedId }) {
                   {r.event_date ? new Date(r.event_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD'} · {r.location || '—'} · ${Number(r.table_fee || 0).toFixed(0)} fee
                 </div>
               </div>
-              <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: statusBg(r.status), color: statusColor(r.status), flexShrink: 0, marginLeft: 8 }}>
-                {r.status.replace('_', ' ')}
+              <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: statusBg(ds), color: statusColor(ds), flexShrink: 0, marginLeft: 8 }}>
+                {statusLabel(ds)}
               </span>
             </div>
           </div>
-        ))}
+          )
+        })}
       <div style={{ height: 16 }} />
     </>
   )
@@ -244,8 +259,10 @@ function CalendarView({ shows, loading, onSelectShow, onAddShow }) {
             // Get the "most important" status for the dot color
             let dotColor = null
             if (hasShows) {
-              if (dayShows.some(s => s.status === 'in_progress')) dotColor = C.amber
-              else if (dayShows.some(s => s.status === 'upcoming')) dotColor = '#7F77DD'
+              const statuses = dayShows.map(s => getDisplayStatus(s))
+              if (statuses.includes('in_progress')) dotColor = C.amber
+              else if (statuses.includes('upcoming')) dotColor = '#7F77DD'
+              else if (statuses.includes('passed')) dotColor = C.red
               else dotColor = C.green
             }
 
@@ -286,38 +303,42 @@ function CalendarView({ shows, loading, onSelectShow, onAddShow }) {
             {new Date(year, month, selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </div>
 
-          {selectedShows.length > 0 ? (
-            selectedShows.map(s => (
-              <div
-                key={s.id}
-                onClick={() => onSelectShow(s.id)}
-                style={{ background: C.surface, borderRadius: 14, padding: '13px 14px', marginBottom: 8, border: `1px solid ${C.border}`, cursor: 'pointer' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{s.name}</div>
-                    <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
-                      {s.location || '—'} · ${Number(s.table_fee || 0).toFixed(0)} fee
+          {selectedShows.length > 0 && (
+            selectedShows.map(s => {
+              const ds = getDisplayStatus(s)
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => onSelectShow(s.id)}
+                  style={{ background: C.surface, borderRadius: 14, padding: '13px 14px', marginBottom: 8, border: `1px solid ${C.border}`, cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{s.name}</div>
+                      <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
+                        {s.location || '—'} · ${Number(s.table_fee || 0).toFixed(0)} fee
+                      </div>
                     </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: statusBg(ds), color: statusColor(ds), flexShrink: 0 }}>
+                      {statusLabel(ds)}
+                    </span>
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: statusBg(s.status), color: statusColor(s.status), flexShrink: 0 }}>
-                    {s.status.replace('_', ' ')}
-                  </span>
                 </div>
-              </div>
-            ))
-          ) : (
-            <div
-              onClick={() => onAddShow(selectedDateStr)}
-              style={{
-                background: C.surface, borderRadius: 14, padding: '18px 14px',
-                border: `1.5px dashed ${C.border2}`, cursor: 'pointer', textAlign: 'center',
-              }}
-            >
-              <div style={{ fontSize: 13, color: C.text3, marginBottom: 4 }}>No shows on this date</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#3B82F6' }}>+ Add a show</div>
-            </div>
+              )
+            })
           )}
+
+          <button
+            onClick={() => onAddShow(selectedDateStr)}
+            style={{
+              width: '100%', padding: 11, borderRadius: 12,
+              background: 'rgba(37,99,235,.08)', border: '1px solid rgba(37,99,235,.15)',
+              fontSize: 13, fontWeight: 600, color: '#3B82F6',
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            + Add a show
+          </button>
         </div>
       )}
 
