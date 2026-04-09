@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 const NavigationContext = createContext(null)
 
 // Tab paths and their order for directional slide detection
-const TAB_PATHS = ['/', '/sales', '/buys', '/shows/manage', '/expenses']
+const TAB_PATHS = ['/', '/sales', '/buys', '/shows/manage', '/trade']
 const TAB_SET = new Set(TAB_PATHS)
 
 // Top-level pages (not "deeper" navigations)
@@ -12,7 +12,7 @@ const TOP_LEVEL = new Set([
   ...TAB_PATHS,
   '/inventory', '/contacts', '/transactions', '/cashflow', '/pl',
   '/reporting', '/shows/compare', '/export', '/employees', '/activity',
-  '/settings', '/profile', '/pong', '/gamble',
+  '/settings', '/profile', '/pong', '/gamble', '/trade',
   // Customer portal
   '/portal', '/portal/history', '/portal/badges', '/portal/profile',
 ])

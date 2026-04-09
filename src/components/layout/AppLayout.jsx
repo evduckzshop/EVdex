@@ -25,6 +25,7 @@ const NAV_GROUPS = [
   { group: 'Operations', items: [
     { id: 'sales',     label: 'Sales',     path: '/sales',        adminOnly: false },
     { id: 'buys',      label: 'Buys',      path: '/buys',         adminOnly: false },
+    { id: 'trade',     label: 'Trade',     path: '/trade',        adminOnly: false },
     { id: 'inventory', label: 'Inventory',  path: '/inventory',    adminOnly: false },
     { id: 'shows',     label: 'Shows',      path: '/shows/manage', adminOnly: false },
     { id: 'expenses',  label: 'Expenses',   path: '/expenses',     adminOnly: false },
@@ -57,7 +58,7 @@ const BOTTOM_TABS = [
   { id: 'sales',    label: 'Sales',    path: '/sales',    icon: SalesIcon },
   { id: 'buys',     label: 'Buys',     path: '/buys',     icon: BuysIcon },
   { id: 'shows',    label: 'Shows',    path: '/shows/manage', icon: ShowsIcon },
-  { id: 'expenses', label: 'Expenses', path: '/expenses', icon: ExpIcon },
+  { id: 'trade',    label: 'Trade',    path: '/trade',    icon: TradeIcon },
 ]
 
 export default function AppLayout({ children }) {
@@ -352,7 +353,7 @@ export default function AppLayout({ children }) {
 }
 
 function getPageTitle(path) {
-  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/transactions': 'Transactions', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/shows/compare': 'Show Comparison', '/export': 'Export', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/contacts/add': 'Add Contact', '/settings': 'Settings', '/profile': 'Profile', '/pong': 'Pong', '/gamble': 'Gamble' }
+  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/transactions': 'Transactions', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/shows/compare': 'Show Comparison', '/export': 'Export', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/contacts/add': 'Add Contact', '/settings': 'Settings', '/profile': 'Profile', '/pong': 'Pong', '/gamble': 'Gamble', '/trade': 'Trade' }
   if (map[path]) return map[path]
   if (path.match(/^\/contacts\/[^/]+\/edit$/)) return 'Edit Contact'
   if (path.match(/^\/contacts\/[^/]+$/)) return 'Contact'
@@ -365,3 +366,4 @@ function BuysIcon({ color }) { return <svg width="19" height="19" viewBox="0 0 2
 function SalesIcon({ color }) { return <svg width="19" height="19" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke={color} strokeWidth="1.5"/><path d="M10 6.5v7M7 10h6" stroke={color} strokeWidth="1.5" strokeLinecap="round"/></svg> }
 function ShowsIcon({ color }) { return <svg width="19" height="19" viewBox="0 0 20 20" fill="none"><rect x="2.5" y="4.5" width="15" height="12" rx="2" stroke={color} strokeWidth="1.5"/><path d="M2.5 8h15M7 2v5M13 2v5" stroke={color} strokeWidth="1.5" strokeLinecap="round"/></svg> }
 function ExpIcon({ color }) { return <svg width="19" height="19" viewBox="0 0 20 20" fill="none"><path d="M10 2v16M6 5.5C6 4 7.8 3 10 3s4 1 4 2.5S12.2 8 10 8 6 9.5 6 11s1.8 3.5 4 3.5 4-1.5 4-3" stroke={color} strokeWidth="1.5" strokeLinecap="round"/></svg> }
+function TradeIcon({ color }) { return <svg width="19" height="19" viewBox="0 0 20 20" fill="none"><path d="M4 8h12M16 8l-3-3M16 8l-3 3M16 12H4M4 12l3-3M4 12l3 3" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> }

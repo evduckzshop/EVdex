@@ -88,6 +88,7 @@ function useTable(tableName) {
 
 export function useSales() { return useTable('sales') }
 export function useBuys() { return useTable('buys') }
+export function useTrades() { return useTable('trades') }
 export function useExpenses() { return useTable('expenses') }
 export function useShows() { return useTable('shows') }
 export function useInventory() { return useTable('inventory') }
