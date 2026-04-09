@@ -148,7 +148,7 @@ export default function LotCalculator({ entries, setEntries, isSale = false }) {
       {/* Sticky total bar (appears when original scrolls out of view) */}
       {isSticky && (
         <div style={{
-          position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)',
+          position: 'fixed', top: 56, left: '50%', transform: 'translateX(-50%)',
           width: '100%', maxWidth: 390, zIndex: 100,
           padding: '6px 14px 6px', background: '#111318',
           borderBottom: '1px solid rgba(37,99,235,.2)',
