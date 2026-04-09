@@ -152,6 +152,8 @@ export default function SalesPage() {
         <Input value={customSaleType} onChange={e => setCustomSaleType(e.target.value)} placeholder="Enter sale type..." style={{ marginTop: 8 }} />
       )}
 
+      <PaymentPicker options={['Cash','Venmo','Zelle','Card']} value={payment} onChange={setPayment} />
+
       <Label>Card / item name</Label>
       <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Charizard ex SAR 151" />
 
@@ -162,8 +164,10 @@ export default function SalesPage() {
         isSale lockRef={lockRef}
       />
 
+      {/* Cost basis hidden for now
       <Label>Cost basis ($)</Label>
       <Input type="number" value={cost} onChange={e => setCost(e.target.value)} placeholder="0.00" />
+      */}
 
       <Label>Sold to</Label>
       <AutocompleteInput contacts={contacts} value={buyer} contactId={buyerContactId} onSelect={(name, cid) => { setBuyer(name); setBuyerContactId(cid) }} placeholder="Buyer name or search contacts…" />
@@ -194,8 +198,6 @@ export default function SalesPage() {
           <div style={{ fontSize: 12, color: C.text3, fontWeight: 500 }}>Tap to attach photo</div>
         </div>
       )}
-
-      <PaymentPicker options={['Cash','Venmo','Zelle','Card']} value={payment} onChange={setPayment} />
 
       <Label>Logged by</Label>
       <div style={{ fontSize: 13, color: C.text2, padding: '8px 0' }}>{profile?.full_name}</div>

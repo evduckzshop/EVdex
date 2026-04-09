@@ -149,6 +149,8 @@ export default function BuysPage() {
       <Label top={false}>Purchase type</Label>
       <ChipGroup options={['Singles','Slabs','Sealed','Lot']} value={buyType} onChange={setBuyType} />
 
+      <PaymentPicker options={['Cash','Venmo','Zelle','Wire']} value={payment} onChange={setPayment} />
+
       {isLot && (
         <div style={{ fontSize: 10, color: C.text3, background: 'rgba(255,255,255,.03)', borderRadius: 8, padding: '7px 10px', marginTop: 8, textAlign: 'center' }}>
           Lot purchases — qty and condition not applicable
@@ -228,8 +230,6 @@ export default function BuysPage() {
           <div style={{ fontSize: 12, color: C.text3, fontWeight: 500 }}>Tap to attach photo</div>
         </div>
       )}
-
-      <PaymentPicker options={['Cash','Venmo','Zelle','Wire']} value={payment} onChange={setPayment} />
 
       <Label>Notes (optional)</Label>
       <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. 80 cards, mostly holos, one PSA 9" />
