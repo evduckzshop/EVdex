@@ -200,7 +200,7 @@ function DealSlider({ pctNum, barColor, onPct, mktNum, amtNum }) {
   )
 }
 
-export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, isSale = false, lockRef, collapsible = false, compact = false, label }) {
+export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, isSale = false, lockRef, collapsible = true, compact = false, label }) {
   const [sliderOpen, setSliderOpen] = useState(!collapsible)
   function onMarket(v) {
     if (lockRef.current) return; lockRef.current = true
