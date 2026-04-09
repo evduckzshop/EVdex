@@ -214,7 +214,7 @@ function ActivityDetail({ item, onClose, isAdmin, onDelete, navigate }) {
         {deleteError && (
           <div style={{ background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.2)', borderRadius: 10, padding: '10px 14px', marginTop: 12, fontSize: 13, color: C.red }}>{deleteError}</div>
         )}
-        {isAdmin && (isSale || isBuy) && (
+        {isAdmin && (
           <button
             onClick={handleDelete}
             disabled={deleting}

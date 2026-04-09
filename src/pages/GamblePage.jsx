@@ -8,81 +8,6 @@ const C = {
   green: '#10B981', red: '#F87171', amber: '#F59E0B', gold: '#F59E0B',
 }
 
-// ── Sound effects via Web Audio API ──────────────────────────
-
-function playSound(type) {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
-    if (type === 'flip') {
-      // Metallic coin flip sound
-      for (let i = 0; i < 6; i++) {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        osc.frequency.value = 800 + Math.random() * 2000
-        osc.type = 'sine'
-        gain.gain.setValueAtTime(0.08, ctx.currentTime + i * 0.15)
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.1)
-        osc.start(ctx.currentTime + i * 0.15)
-        osc.stop(ctx.currentTime + i * 0.15 + 0.12)
-      }
-      // Landing sound
-      const land = ctx.createOscillator()
-      const landGain = ctx.createGain()
-      land.connect(landGain)
-      landGain.connect(ctx.destination)
-      land.frequency.value = 1200
-      land.type = 'sine'
-      landGain.gain.setValueAtTime(0.15, ctx.currentTime + 0.9)
-      landGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2)
-      land.start(ctx.currentTime + 0.9)
-      land.stop(ctx.currentTime + 1.3)
-    } else if (type === 'dice') {
-      // Rattling dice sound
-      for (let i = 0; i < 12; i++) {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        osc.frequency.value = 200 + Math.random() * 600
-        osc.type = 'square'
-        const t = ctx.currentTime + i * 0.08 + Math.random() * 0.04
-        gain.gain.setValueAtTime(0.04, t)
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06)
-        osc.start(t)
-        osc.stop(t + 0.07)
-      }
-      // Thud landing
-      const thud = ctx.createOscillator()
-      const thudGain = ctx.createGain()
-      thud.connect(thudGain)
-      thudGain.connect(ctx.destination)
-      thud.frequency.value = 150
-      thud.type = 'sine'
-      thudGain.gain.setValueAtTime(0.12, ctx.currentTime + 1.0)
-      thudGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.3)
-      thud.start(ctx.currentTime + 1.0)
-      thud.stop(ctx.currentTime + 1.4)
-    } else if (type === 'result') {
-      // Success chime
-      const notes = [523, 659, 784]
-      notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        osc.frequency.value = freq
-        osc.type = 'sine'
-        gain.gain.setValueAtTime(0.1, ctx.currentTime + i * 0.12)
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.3)
-        osc.start(ctx.currentTime + i * 0.12)
-        osc.stop(ctx.currentTime + i * 0.12 + 0.35)
-      })
-    }
-  } catch {}
-}
-
 // ── Coin Flip ────────────────────────────────────────────────
 
 function CoinFlip() {
@@ -93,13 +18,11 @@ function CoinFlip() {
     if (flipping) return
     setFlipping(true)
     setResult(null)
-    playSound('flip')
 
     setTimeout(() => {
       const r = Math.random() < 0.5 ? 'heads' : 'tails'
       setResult(r)
       setFlipping(false)
-      playSound('result')
     }, 2000)
   }
 
@@ -226,13 +149,11 @@ function DiceRoll() {
     if (rolling) return
     setRolling(true)
     setResults([])
-    playSound('dice')
 
     setTimeout(() => {
       const r = Array.from({ length: diceCount }, () => Math.floor(Math.random() * 6) + 1)
       setResults(r)
       setRolling(false)
-      playSound('result')
     }, 2000)
   }
 
