@@ -59,6 +59,7 @@ export default function LotCalculator({ entries, setEntries, isSale = false }) {
   const lockRefs = useRef({})
   const totalBarRef = useRef(null)
   const [isSticky, setIsSticky] = useState(false)
+  const [entryCountInput, setEntryCountInput] = useState(String(entries.length))
 
   // Watch when the original TotalBar scrolls out of view
   useEffect(() => {
@@ -104,12 +105,20 @@ export default function LotCalculator({ entries, setEntries, isSale = false }) {
 
   function addEntry() {
     if (entries.length >= MAX_ENTRIES) return
-    setEntries(prev => [...prev, { market: '', amount: '', pct: '', description: '', showDesc: true }])
+    setEntries(prev => {
+      const next = [...prev, { market: '', amount: '', pct: '', description: '', showDesc: true }]
+      setEntryCountInput(String(next.length))
+      return next
+    })
   }
 
   function removeEntry(idx) {
     if (entries.length <= 1) return
-    setEntries(prev => prev.filter((_, i) => i !== idx))
+    setEntries(prev => {
+      const next = prev.filter((_, i) => i !== idx)
+      setEntryCountInput(String(next.length))
+      return next
+    })
   }
 
   function toggleDesc(idx) {
@@ -126,8 +135,10 @@ export default function LotCalculator({ entries, setEntries, isSale = false }) {
         <input
           type="number"
           inputMode="numeric"
-          value={entries.length}
-          onChange={e => setEntryCount(e.target.value)}
+          value={entryCountInput}
+          onChange={e => setEntryCountInput(e.target.value)}
+          onBlur={() => { setEntryCount(entryCountInput); setEntryCountInput(String(Math.max(1, Math.min(MAX_ENTRIES, parseInt(entryCountInput) || 1)))) }}
+          onFocus={e => e.target.select()}
           min={1}
           max={MAX_ENTRIES}
           style={{
