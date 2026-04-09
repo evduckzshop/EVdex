@@ -3,12 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useContacts, useSales, useBuys } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
 import { supabase, inviteCustomer, deleteCustomer } from '../lib/supabase'
-import { C, Label, Input, Select, ChipGroup, CtaButton, GhostButton, Toast, RecordCard } from '../components/ui/FormComponents'
+import { C, Label, Input, CtaButton, GhostButton, Toast, RecordCard } from '../components/ui/FormComponents'
 import { BadgeCard } from '../components/ui/BadgeCard'
 
 const AVATAR_COLORS = ['#1E40AF','#065F46','#78350F','#1E3A8A','#7C2D12','#1E3A5F']
-const pillColor = r => r === 'Buyer' ? '#60A5FA' : r === 'Seller' ? C.red : r === 'Wholesaler' ? C.green : C.amber
-const pillBg = r => r === 'Buyer' ? 'rgba(37,99,235,.12)' : r === 'Seller' ? 'rgba(248,113,113,.12)' : r === 'Wholesaler' ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.12)'
 const SORT_OPTIONS = [
   { key: 'alpha', label: 'A–Z' },
   { key: 'recent', label: 'Recent' },
@@ -30,11 +28,8 @@ export default function ContactsListPage() {
   const navigate = useNavigate()
 
   const [search, setSearch] = useState('')
-  const [filterRole, setFilterRole] = useState('')
-  const [filterPay, setFilterPay] = useState('')
   const [sort, setSort] = useState('alpha')
   const [layout, setLayout] = useState(() => localStorage.getItem(LAYOUT_KEY) || 'card')
-  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => { fetch(); fetchSales(); fetchBuys() }, [])
 
@@ -42,8 +37,6 @@ export default function ContactsListPage() {
 
   let filtered = rows.filter(r => {
     if (search && !(r.name || '').toLowerCase().includes(search.toLowerCase()) && !(r.nickname || '').toLowerCase().includes(search.toLowerCase())) return false
-    if (filterRole && r.role !== filterRole) return false
-    if (filterPay && r.preferred_pay !== filterPay) return false
     return true
   })
 
@@ -79,36 +72,7 @@ export default function ContactsListPage() {
             {s.label}
           </button>
         ))}
-        <div style={{ flex: 1 }} />
-        <div onClick={() => setShowFilters(!showFilters)} style={{ fontSize: 11, color: '#3B82F6', cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}>
-          <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M3 5h14M5 10h10M7 15h6" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          Filters
-        </div>
       </div>
-
-      {showFilters && (
-        <div style={{ background: C.surface, borderRadius: 12, padding: 12, marginBottom: 10, border: `1px solid ${C.border}` }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div>
-              <div style={{ fontSize: 10, color: C.text3, fontWeight: 600, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>Role</div>
-              <Select value={filterRole} onChange={e => setFilterRole(e.target.value)} style={{ padding: '8px 10px', fontSize: 12 }}>
-                <option value="">All roles</option>
-                {['Seller','Buyer','Both','Wholesaler'].map(r => <option key={r}>{r}</option>)}
-              </Select>
-            </div>
-            <div>
-              <div style={{ fontSize: 10, color: C.text3, fontWeight: 600, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>Payment</div>
-              <Select value={filterPay} onChange={e => setFilterPay(e.target.value)} style={{ padding: '8px 10px', fontSize: 12 }}>
-                <option value="">All methods</option>
-                {['Cash','Venmo','Zelle','Card'].map(p => <option key={p}>{p}</option>)}
-              </Select>
-            </div>
-          </div>
-          {(filterRole || filterPay) && (
-            <div onClick={() => { setFilterRole(''); setFilterPay('') }} style={{ fontSize: 11, color: C.red, cursor: 'pointer', marginTop: 8, textAlign: 'center' }}>Clear filters</div>
-          )}
-        </div>
-      )}
 
       <button onClick={() => navigate('/contacts/add')} style={{ width: '100%', padding: 11, borderRadius: 12, background: 'rgba(37,99,235,.08)', border: '1px solid rgba(37,99,235,.15)', fontSize: 13, fontWeight: 600, color: '#3B82F6', cursor: 'pointer', marginBottom: 12, fontFamily: 'inherit' }}>
         + Add contact
@@ -131,10 +95,9 @@ export default function ContactsListPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.name}{r.nickname ? <span style={{ fontWeight: 400, color: C.text3 }}> ({r.nickname})</span> : ''}</div>
                   <div style={{ fontSize: 10, color: C.text3, marginTop: 2 }}>
-                    {r.preferred_pay || ''}{r.phone ? ` · ${r.phone}` : ''}{r.instagram ? ` · @${r.instagram.replace(/^@/, '')}` : ''}{txCount > 0 ? ` · ${txCount} txn` : ''}
+                    {r.phone || ''}{r.instagram ? `${r.phone ? ' · ' : ''}@${r.instagram.replace(/^@/, '')}` : ''}{txCount > 0 ? `${r.phone || r.instagram ? ' · ' : ''}${txCount} txn` : ''}
                   </div>
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: pillBg(r.role), color: pillColor(r.role) }}>{r.role}</span>
               </div>
             )
           })
@@ -144,10 +107,8 @@ export default function ContactsListPage() {
               const txCount = getTxData(r.id, r.name, sales, buys).count
               return (
                 <div key={r.id} onClick={() => navigate(`/contacts/${r.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 13px', cursor: 'pointer', borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : 'none' }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: pillColor(r.role), flexShrink: 0 }} />
                   <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.nickname ? <span style={{ color: C.text3, fontWeight: 400 }}> ({r.nickname})</span> : ''}</div>
                   {txCount > 0 && <span style={{ fontSize: 10, color: C.text3 }}>{txCount} txn</span>}
-                  <span style={{ fontSize: 10, color: C.text3 }}>{r.role}</span>
                 </div>
               )
             })}
@@ -287,10 +248,6 @@ export function ContactDetailPage() {
           </div>
           <div>
             <div style={{ fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: -0.5 }}>{contact.name}{contact.nickname ? <span style={{ fontSize: 14, fontWeight: 400, color: 'rgba(255,255,255,.45)' }}> ({contact.nickname})</span> : ''}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: pillBg(contact.role), color: pillColor(contact.role) }}>{contact.role}</span>
-              {contact.preferred_pay && <span style={{ fontSize: 11, color: 'rgba(255,255,255,.45)' }}>{contact.preferred_pay}</span>}
-            </div>
           </div>
         </div>
       </div>
@@ -512,20 +469,16 @@ export function ContactEditPage() {
 
   const [name, setName] = useState('')
   const [nickname, setNickname] = useState('')
-  const [role, setRole] = useState('Seller')
   const [phone, setPhone] = useState('')
   const [instagram, setInstagram] = useState('')
-  const [pay, setPay] = useState('Cash')
   const [notes, setNotes] = useState('')
 
   useEffect(() => {
     if (contact) {
       setName(contact.name || '')
       setNickname(contact.nickname || '')
-      setRole(contact.role || 'Seller')
       setPhone(contact.phone || '')
       setInstagram(contact.instagram || '')
-      setPay(contact.preferred_pay || 'Cash')
       setNotes(contact.notes || '')
     }
   }, [contact?.id])
@@ -537,7 +490,7 @@ export function ContactEditPage() {
     if (!name.trim()) { setMsg({ text: 'Name is required.', type: 'error' }); return }
     setSaving(true)
     try {
-      await update(id, { name: name.trim(), nickname: nickname.trim() || null, role, phone: phone || null, instagram: instagram || null, preferred_pay: pay, notes: notes || null })
+      await update(id, { name: name.trim(), nickname: nickname.trim() || null, phone: phone || null, instagram: instagram || null, notes: notes || null })
       setMsg({ text: 'Contact updated!', type: 'success' })
       setTimeout(() => navigate(`/contacts/${id}`, { replace: true }), 600)
     } catch (e) { setMsg({ text: 'Error: ' + e.message, type: 'error' }) }
@@ -557,14 +510,10 @@ export function ContactEditPage() {
       <Input value={name} onChange={e => setName(e.target.value)} placeholder="Name or business" />
       <Label>Nickname / alias (optional)</Label>
       <Input value={nickname} onChange={e => setNickname(e.target.value)} placeholder="e.g. CardKing, TCGDeals" />
-      <Label>Role</Label>
-      <Select value={role} onChange={e => setRole(e.target.value)}>{['Seller','Buyer','Both','Wholesaler'].map(r => <option key={r}>{r}</option>)}</Select>
       <Label>Phone number</Label>
       <Input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 123-4567" />
       <Label>Instagram</Label>
       <Input value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="@username" />
-      <Label>Preferred payment</Label>
-      <ChipGroup options={['Cash','Venmo','Zelle','Card']} value={pay} onChange={setPay} color="green" />
       <Label>Notes</Label>
       <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Buys holos in bulk, pays fast" />
 
@@ -584,10 +533,8 @@ export function ContactAddPage() {
 
   const [name, setName] = useState('')
   const [nickname, setNickname] = useState('')
-  const [role, setRole] = useState('Seller')
   const [phone, setPhone] = useState('')
   const [instagram, setInstagram] = useState('')
-  const [pay, setPay] = useState('Cash')
   const [notes, setNotes] = useState('')
 
   useEffect(() => { fetch() }, [])
@@ -600,7 +547,7 @@ export function ContactAddPage() {
     if (duplicates.length > 0 && !nickname.trim()) { setMsg({ text: 'A contact with this name exists. Add a nickname to distinguish them, or use a different name.', type: 'error' }); return }
     setSaving(true)
     try {
-      await insert({ name: name.trim(), nickname: nickname.trim() || null, role, phone: phone || null, instagram: instagram || null, preferred_pay: pay, notes: notes || null })
+      await insert({ name: name.trim(), nickname: nickname.trim() || null, phone: phone || null, instagram: instagram || null, notes: notes || null })
       setMsg({ text: 'Contact saved!', type: 'success' })
       setTimeout(() => navigate('/contacts', { replace: true }), 600)
     } catch (e) { setMsg({ text: 'Error: ' + e.message, type: 'error' }) }
@@ -626,14 +573,10 @@ export function ContactAddPage() {
       )}
       <Label>Nickname / alias (optional)</Label>
       <Input value={nickname} onChange={e => setNickname(e.target.value)} placeholder="e.g. CardKing, TCGDeals" />
-      <Label>Role</Label>
-      <Select value={role} onChange={e => setRole(e.target.value)}>{['Seller','Buyer','Both','Wholesaler'].map(r => <option key={r}>{r}</option>)}</Select>
       <Label>Phone number</Label>
       <Input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 123-4567" />
       <Label>Instagram</Label>
       <Input value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="@username" />
-      <Label>Preferred payment</Label>
-      <ChipGroup options={['Cash','Venmo','Zelle','Card']} value={pay} onChange={setPay} color="green" />
       <Label>Notes</Label>
       <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Buys holos in bulk, pays fast" />
 
