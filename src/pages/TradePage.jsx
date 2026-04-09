@@ -8,7 +8,7 @@ import { C, Label, Input, Select, CtaButton, GhostButton, Toast, AutocompleteInp
 
 const MAX_ITEMS = 100
 
-function emptyItem() { return { description: '', market: '', pct: '60', tradeValue: '' } }
+function emptyItem() { return { description: '', market: '', pct: '100', tradeValue: '' } }
 function emptyYourItem() { return { description: '', price: '' } }
 
 function calcTradeValue(market, pct) {
@@ -26,6 +26,7 @@ function TradeCalculator({ onSaved }) {
   const { rows: shows, fetch: fetchShows } = useShows()
   const { profile } = useAuth()
   const { activeShowId } = useActiveShow()
+  const userName = profile?.full_name?.split(' ')[0] || 'You'
 
   const [theirItems, setTheirItems] = useState([emptyItem()])
   const [yourItems, setYourItems] = useState([emptyYourItem()])
@@ -173,12 +174,12 @@ function TradeCalculator({ onSaved }) {
       {/* ── SUMMARY ROW ────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8, marginBottom: 12 }}>
         <div style={{ background: C.surface, borderRadius: 10, padding: '8px 10px', textAlign: 'center', border: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Their trade value</div>
+          <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Customer trade value</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: C.red }}>${theirTotalTrade.toFixed(2)}</div>
           <div style={{ fontSize: 9, color: C.text3 }}>avg {theirAvgPct}%</div>
         </div>
         <div style={{ background: C.surface, borderRadius: 10, padding: '8px 10px', textAlign: 'center', border: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Your market value</div>
+          <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>{userName}'s market</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: C.green }}>${yourTotal.toFixed(2)}</div>
           <div style={{ fontSize: 9, color: C.text3 }}>{yourItems.filter(i => parseFloat(i.price) > 0).length} items</div>
         </div>
@@ -200,7 +201,7 @@ function TradeCalculator({ onSaved }) {
             <div style={{ background: C.surface2, borderRadius: 12, padding: '10px 14px', border: `1px solid ${C.border}` }}>
               {[
                 { label: 'Customer Market Value', value: `$${theirTotalMarket.toFixed(2)}`, color: C.text },
-                { label: 'Your Trade-In Value', value: `$${theirTotalTrade.toFixed(2)}`, color: C.amber },
+                { label: 'Trade-In Value', value: `$${theirTotalTrade.toFixed(2)}`, color: C.amber },
                 { label: 'Value Gained', value: `$${valueGained.toFixed(2)}`, color: C.green },
               ].map((r, i, arr) => (
                 <div key={r.label} style={{
@@ -218,7 +219,7 @@ function TradeCalculator({ onSaved }) {
 
       {/* ── THEIR SIDE ─────────────────────────────────────── */}
       <div style={{ fontSize: 10, fontWeight: 600, color: C.red, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>
-        Their side · Customer brings in
+        Customer
       </div>
       {theirItems.map((item, idx) => (
         <div key={idx} style={{
@@ -272,12 +273,12 @@ function TradeCalculator({ onSaved }) {
         background: 'rgba(248,113,113,.04)', border: '1px dashed rgba(248,113,113,.2)',
         fontSize: 11, fontWeight: 600, color: C.red, cursor: 'pointer', fontFamily: 'inherit',
       }}>
-        + Add their item
+        + Add item
       </button>
 
       {/* ── YOUR SIDE ──────────────────────────────────────── */}
       <div style={{ fontSize: 10, fontWeight: 600, color: C.green, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>
-        Your side · You give out
+        {userName}
       </div>
       {yourItems.map((item, idx) => (
         <div key={idx} style={{
@@ -315,7 +316,7 @@ function TradeCalculator({ onSaved }) {
         background: 'rgba(16,185,129,.04)', border: '1px dashed rgba(16,185,129,.2)',
         fontSize: 11, fontWeight: 600, color: C.green, cursor: 'pointer', fontFamily: 'inherit',
       }}>
-        + Add your item
+        + Add item
       </button>
 
       {/* Description */}
@@ -398,15 +399,15 @@ function TradeDetail({ trade, onClose, isAdmin, onDelete }) {
         {/* Summary */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 12 }}>
           <div style={{ background: C.surface, borderRadius: 8, padding: 8, textAlign: 'center' }}>
-            <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', marginBottom: 2 }}>Their market</div>
+            <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', marginBottom: 2 }}>Customer market</div>
             <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>${Number(trade.their_total_market).toFixed(0)}</div>
           </div>
           <div style={{ background: C.surface, borderRadius: 8, padding: 8, textAlign: 'center' }}>
-            <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', marginBottom: 2 }}>Their trade</div>
+            <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', marginBottom: 2 }}>Customer trade</div>
             <div style={{ fontSize: 14, fontWeight: 700, color: C.red }}>${Number(trade.their_total_trade).toFixed(0)}</div>
           </div>
           <div style={{ background: C.surface, borderRadius: 8, padding: 8, textAlign: 'center' }}>
-            <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', marginBottom: 2 }}>Your market</div>
+            <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', marginBottom: 2 }}>{trade.profiles?.full_name?.split(' ')[0] || 'Staff'} market</div>
             <div style={{ fontSize: 14, fontWeight: 700, color: C.green }}>${Number(trade.your_total).toFixed(0)}</div>
           </div>
         </div>
@@ -414,7 +415,7 @@ function TradeDetail({ trade, onClose, isAdmin, onDelete }) {
         {/* Their items */}
         {theirItems.length > 0 && (
           <>
-            <div style={{ fontSize: 9, fontWeight: 600, color: C.red, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>Their items</div>
+            <div style={{ fontSize: 9, fontWeight: 600, color: C.red, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>Customer items</div>
             <div style={{ background: C.surface, borderRadius: 10, padding: '2px 12px', marginBottom: 10, border: `1px solid ${C.border}` }}>
               {theirItems.map((item, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < theirItems.length - 1 ? `1px solid ${C.border}` : 'none' }}>
@@ -429,7 +430,7 @@ function TradeDetail({ trade, onClose, isAdmin, onDelete }) {
         {/* Your items */}
         {yourItems.length > 0 && (
           <>
-            <div style={{ fontSize: 9, fontWeight: 600, color: C.green, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>Your items</div>
+            <div style={{ fontSize: 9, fontWeight: 600, color: C.green, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>{trade.profiles?.full_name?.split(' ')[0] || 'Staff'} items</div>
             <div style={{ background: C.surface, borderRadius: 10, padding: '2px 12px', marginBottom: 10, border: `1px solid ${C.border}` }}>
               {yourItems.map((item, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < yourItems.length - 1 ? `1px solid ${C.border}` : 'none' }}>
