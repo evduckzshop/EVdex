@@ -35,7 +35,7 @@ export default function QuickLog({ activeShowId, onDone, onSave }) {
       if (type === 'sale') {
         await insertSale({
           ...record,
-          sale_type: 'Single card',
+          sale_type: 'Singles',
           sale_price: parseFloat(price),
           buyer: buyer || null,
         })

@@ -275,8 +275,9 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
             <input
               type="number"
               inputMode="decimal"
+              min="0"
               value={f.val}
-              onChange={e => f.set(e.target.value)}
+              onChange={e => { const v = e.target.value; if (v === '' || parseFloat(v) >= 0) f.set(v) }}
               placeholder={f.pctField ? '—' : '0.00'}
               style={{
                 width: '100%', padding: compact ? '8px 6px' : '10px 8px',

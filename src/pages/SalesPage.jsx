@@ -22,7 +22,7 @@ export default function SalesPage() {
   const editId = searchParams.get('edit')
   const editRecord = editId ? rows.find(r => r.id === editId) : null
 
-  const [saleType, setSaleType] = useState('Single card')
+  const [saleType, setSaleType] = useState('Singles')
   const [customSaleType, setCustomSaleType] = useState('')
   const [desc, setDesc] = useState('')
   const [market, setMarket] = useState('')
@@ -52,8 +52,8 @@ export default function SalesPage() {
   // Pre-fill form when editing
   useEffect(() => {
     if (editRecord) {
-      const knownTypes = ['Single card', 'Lot', 'Slab', 'Sealed']
-      const editType = editRecord.sale_type || 'Single card'
+      const knownTypes = ['Singles', 'Lot', 'Slab', 'Sealed']
+      const editType = editRecord.sale_type || 'Singles'
       if (knownTypes.includes(editType)) {
         setSaleType(editType)
         setCustomSaleType('')
@@ -147,7 +147,7 @@ export default function SalesPage() {
   }
 
   function resetForm() {
-    setSaleType('Single card'); setCustomSaleType(''); setDesc(''); setMarket(''); setPrice(''); setPct(''); setLotEntries([{ market: '', amount: '', pct: '', description: '', showDesc: true }])
+    setSaleType('Singles'); setCustomSaleType(''); setDesc(''); setMarket(''); setPrice(''); setPct(''); setLotEntries([{ market: '', amount: '', pct: '', description: '', showDesc: true }])
     setCost(''); setBuyer(''); setBuyerContactId(null); setPayment('Cash'); setShowId(''); setPhotoFile(null); setPhotoName('')
   }
 
@@ -179,7 +179,7 @@ export default function SalesPage() {
       ) : (
       <>
       <Label top={false}>Sale type</Label>
-      <ChipGroup options={['Single card','Slabs','Sealed','Lot','Other']} value={saleType} onChange={v => { setSaleType(v); if (v !== 'Other') setCustomSaleType('') }} color="green" />
+      <ChipGroup options={['Singles','Slabs','Sealed','Lot','Other']} value={saleType} onChange={v => { setSaleType(v); if (v !== 'Other') setCustomSaleType('') }} color="green" />
       {saleType === 'Other' && (
         <Input value={customSaleType} onChange={e => setCustomSaleType(e.target.value)} placeholder="Enter sale type..." style={{ marginTop: 8 }} />
       )}

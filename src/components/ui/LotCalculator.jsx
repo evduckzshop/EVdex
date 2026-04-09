@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { C, DealCalc, Input } from './FormComponents'
 
 const MAX_ENTRIES = 100
@@ -31,8 +31,9 @@ function TotalBar({ entries, isSale, onAvgPctChange }) {
           <input
             type="number"
             inputMode="decimal"
+            min="0"
             value={avgPct > 0 ? avgPct : ''}
-            onChange={e => onAvgPctChange(e.target.value)}
+            onChange={e => { const v = e.target.value; if (v === '' || parseFloat(v) >= 0) onAvgPctChange(v) }}
             placeholder="—"
             style={{
               width: '100%', maxWidth: 70, margin: '0 auto',
@@ -56,6 +57,20 @@ function TotalBar({ entries, isSale, onAvgPctChange }) {
 
 export default function LotCalculator({ entries, setEntries, isSale = false }) {
   const lockRefs = useRef({})
+  const totalBarRef = useRef(null)
+  const [isSticky, setIsSticky] = useState(false)
+
+  // Watch when the original TotalBar scrolls out of view
+  useEffect(() => {
+    const el = totalBarRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsSticky(!entry.isIntersecting),
+      { threshold: 0, rootMargin: '-1px 0px 0px 0px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   function getLockRef(idx) {
     if (!lockRefs.current[idx]) lockRefs.current[idx] = { current: false }
@@ -125,8 +140,23 @@ export default function LotCalculator({ entries, setEntries, isSale = false }) {
         />
       </div>
 
-      {/* Top total bar */}
-      <TotalBar entries={entries} isSale={isSale} onAvgPctChange={distributeAvgPct} />
+      {/* Top total bar (original position) */}
+      <div ref={totalBarRef}>
+        <TotalBar entries={entries} isSale={isSale} onAvgPctChange={distributeAvgPct} />
+      </div>
+
+      {/* Sticky total bar (appears when original scrolls out of view) */}
+      {isSticky && (
+        <div style={{
+          position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)',
+          width: '100%', maxWidth: 390, zIndex: 100,
+          padding: '6px 14px 6px', background: '#111318',
+          borderBottom: '1px solid rgba(37,99,235,.2)',
+          boxShadow: '0 4px 12px rgba(0,0,0,.4)',
+        }}>
+          <TotalBar entries={entries} isSale={isSale} onAvgPctChange={distributeAvgPct} />
+        </div>
+      )}
 
       {/* Entry cards */}
       <div style={{ marginTop: 10 }}>
