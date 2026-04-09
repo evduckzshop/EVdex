@@ -5,8 +5,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const ALLOWED_ORIGIN = Deno.env.get('SITE_URL') || 'http://localhost:3000'
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
@@ -72,8 +73,15 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
   } catch (error) {
+    const msg = (error as Error).message || ''
+    const safeErrors = [
+      'Missing authorization header', 'Unauthorized', 'Only admins can invite employees',
+      'email and fullName are required', 'Invalid role',
+    ]
+    const safeMsg = safeErrors.find(e => msg.includes(e)) || 'An error occurred. Please try again.'
+    console.error('invite-employee error:', msg)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: safeMsg }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     )
   }

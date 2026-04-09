@@ -91,19 +91,35 @@ export async function logActivity({ actionType, entityType, entityId, summary, b
   if (error) console.error('Failed to log activity:', error.message)
 }
 
+// ── File validation helper ────────────────────────────────────
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+
+function validateImageFile(file) {
+  if (!file) throw new Error('No file provided')
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    throw new Error('Invalid file type. Please upload a JPG, PNG, WebP, or GIF image.')
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error('File too large. Maximum size is 5MB.')
+  }
+  // Use MIME type for extension instead of filename (prevents spoofing)
+  return file.type.split('/')[1].replace('jpeg', 'jpg')
+}
+
 // ── Avatar upload helper ──────────────────────────────────────
 
 export async function uploadAvatar(userId, file) {
-  const ext = file.name.split('.').pop()
+  const ext = validateImageFile(file)
   const path = `${userId}/avatar.${ext}`
 
   const { error: uploadError } = await supabase.storage
     .from('avatars')
-    .upload(path, file, { upsert: true })
+    .upload(path, file, { upsert: true, contentType: file.type })
   if (uploadError) throw uploadError
 
   const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-  // Append cache-buster so the browser fetches the new image
   const url = `${data.publicUrl}?t=${Date.now()}`
 
   const { error: updateError } = await supabase
@@ -121,12 +137,12 @@ export async function uploadAvatar(userId, file) {
 // ── Photo upload helper ───────────────────────────────────────
 
 export async function uploadPhoto(userId, file) {
-  const ext = file.name.split('.').pop()
+  const ext = validateImageFile(file)
   const path = `${userId}/${Date.now()}.${ext}`
 
   const { error: uploadError } = await supabase.storage
     .from('photos')
-    .upload(path, file, { upsert: false })
+    .upload(path, file, { upsert: false, contentType: file.type })
   if (uploadError) throw uploadError
 
   const { data } = supabase.storage.from('photos').getPublicUrl(path)

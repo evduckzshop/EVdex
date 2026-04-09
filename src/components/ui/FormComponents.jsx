@@ -21,10 +21,11 @@ export function Label({ children, top = true }) {
   )
 }
 
-export function Input({ style: s, ...props }) {
+export function Input({ style: s, maxLength = 500, ...props }) {
   return (
     <input
       {...props}
+      maxLength={maxLength}
       style={{
         width: '100%', padding: '11px 13px', background: C.surface,
         border: `1px solid ${C.border2}`, borderRadius: 11,
