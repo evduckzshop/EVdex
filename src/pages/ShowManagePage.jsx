@@ -169,21 +169,23 @@ function CalendarView({ shows, loading, onSelectShow, onAddShow }) {
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
   const [selectedDate, setSelectedDate] = useState(null)
+  const [showMonthList, setShowMonthList] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('all')
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear(y => y - 1) }
     else setMonth(m => m - 1)
-    setSelectedDate(null)
+    setSelectedDate(null); setShowMonthList(false)
   }
   function nextMonth() {
     if (month === 11) { setMonth(0); setYear(y => y + 1) }
     else setMonth(m => m + 1)
-    setSelectedDate(null)
+    setSelectedDate(null); setShowMonthList(false)
   }
   function goToday() {
     setYear(today.getFullYear())
     setMonth(today.getMonth())
-    setSelectedDate(null)
+    setSelectedDate(null); setShowMonthList(false)
   }
 
   // Build calendar grid
@@ -218,7 +220,25 @@ function CalendarView({ shows, loading, onSelectShow, onAddShow }) {
   function handleDateTap(day) {
     if (!day) return
     setSelectedDate(selectedDate === day ? null : day)
+    setShowMonthList(false)
   }
+
+  function toggleMonthList() {
+    setShowMonthList(!showMonthList)
+    setSelectedDate(null)
+    setStatusFilter('all')
+  }
+
+  // All shows in this month
+  const monthShows = shows.filter(s => {
+    if (!s.event_date) return false
+    const [y, m] = s.event_date.split('-').map(Number)
+    return y === year && m - 1 === month
+  }).sort((a, b) => a.event_date.localeCompare(b.event_date))
+
+  const filteredMonthShows = statusFilter === 'all'
+    ? monthShows
+    : monthShows.filter(s => getDisplayStatus(s) === statusFilter)
 
   return (
     <div>
@@ -228,9 +248,17 @@ function CalendarView({ shows, loading, onSelectShow, onAddShow }) {
           <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M13 4l-6 6 6 6" stroke={C.text2} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{MONTH_NAMES[month]} {year}</div>
-          {!isCurrentMonth && (
+          <div onClick={toggleMonthList} style={{ fontSize: 16, fontWeight: 700, color: showMonthList ? '#3B82F6' : C.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            {MONTH_NAMES[month]} {year}
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: showMonthList ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .2s ease' }}>
+              <path d="M3 4.5l3 3 3-3" stroke={showMonthList ? '#3B82F6' : C.text3} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          {!isCurrentMonth && !showMonthList && (
             <div onClick={goToday} style={{ fontSize: 10, color: '#3B82F6', cursor: 'pointer', marginTop: 2, fontWeight: 600 }}>Today</div>
+          )}
+          {showMonthList && (
+            <div style={{ fontSize: 10, color: C.text3, marginTop: 2 }}>{monthShows.length} show{monthShows.length !== 1 ? 's' : ''} this month</div>
           )}
         </div>
         <button onClick={nextMonth} style={{ width: 36, height: 36, borderRadius: 10, background: C.surface, border: `1px solid ${C.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -342,7 +370,69 @@ function CalendarView({ shows, loading, onSelectShow, onAddShow }) {
         </div>
       )}
 
-      {!selectedDate && !loading && (
+      {/* Month overview list */}
+      {showMonthList && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+              {MONTH_NAMES[month]} shows
+            </div>
+          </div>
+
+          {/* Status filter chips */}
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 10, paddingBottom: 2 }}>
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'upcoming', label: 'Upcoming' },
+              { key: 'in_progress', label: 'In Progress' },
+              { key: 'passed', label: 'Passed' },
+              { key: 'completed', label: 'Completed' },
+            ].map(f => (
+              <button key={f.key} onClick={() => setStatusFilter(f.key)} style={{
+                flexShrink: 0, padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 500,
+                cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                border: `1px solid ${statusFilter === f.key ? 'rgba(37,99,235,.4)' : C.border2}`,
+                background: statusFilter === f.key ? 'rgba(37,99,235,.2)' : C.surface,
+                color: statusFilter === f.key ? '#3B82F6' : C.text2,
+              }}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {filteredMonthShows.length === 0 ? (
+            <div style={{ textAlign: 'center', color: C.text3, padding: 20, fontSize: 13 }}>
+              {monthShows.length === 0 ? 'No shows this month' : 'No shows match this filter'}
+            </div>
+          ) : (
+            filteredMonthShows.map(s => {
+              const ds = getDisplayStatus(s)
+              const showDay = s.event_date ? new Date(s.event_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }) : ''
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => onSelectShow(s.id)}
+                  style={{ background: C.surface, borderRadius: 14, padding: '13px 14px', marginBottom: 8, border: `1px solid ${C.border}`, cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{s.name}</div>
+                      <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
+                        {showDay} · {s.location || '—'} · ${Number(s.table_fee || 0).toFixed(0)} fee
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: statusBg(ds), color: statusColor(ds), flexShrink: 0 }}>
+                      {statusLabel(ds)}
+                    </span>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      )}
+
+      {!selectedDate && !showMonthList && !loading && (
         <div style={{ textAlign: 'center', color: C.text3, fontSize: 12, padding: '8px 0' }}>
           Tap a date to see shows
         </div>

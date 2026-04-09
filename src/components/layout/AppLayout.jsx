@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useNav } from '../../context/NavigationContext'
 import { signOut } from '../../lib/supabase'
 import PageTransition from './PageTransition'
+import { StaffBadgePill } from '../ui/StaffBadge'
 
 const C = {
   bg: '#111318', surface: '#1E293B', surface2: '#162032', surface3: '#0F172A',
@@ -136,7 +137,7 @@ export default function AppLayout({ children }) {
             {!profile?.avatar_url && (profile?.full_name?.[0]?.toUpperCase() || 'U')}
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{profile?.full_name}</div>
-          <div style={{ fontSize: 11, color: C.text3, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: 11, color: C.text3, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{
               padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 600,
               background: isAdmin ? 'rgba(37,99,235,.15)' : 'rgba(16,185,129,.12)',
@@ -144,6 +145,7 @@ export default function AppLayout({ children }) {
             }}>
               {isAdmin ? 'Admin' : 'Employee'}
             </span>
+            {profile?.badge_title && <StaffBadgePill title={profile.badge_title} color={profile.badge_color} effect={profile.badge_effect} size="small" />}
             <span>EVduckzShop</span>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { updateProfile, signOut, uploadAvatar } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
+import { StaffBadgePill, StaffBadgeEditor } from '../components/ui/StaffBadge'
 
 const C = { surface: '#1E293B', surface2: '#162032', border: 'rgba(255,255,255,.07)', border2: 'rgba(255,255,255,.13)', text: '#F1F5F9', text2: '#94A3B8', text3: '#475569', accent: '#2563EB', green: '#10B981', red: '#F87171' }
 
@@ -19,6 +20,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [msg, setMsg] = useState('')
+  const [showBadgeEditor, setShowBadgeEditor] = useState(false)
 
   async function handleSave() {
     if (!fullName.trim()) return
@@ -103,7 +105,7 @@ export default function ProfilePage() {
           </div>
         )}
         <div style={{ fontSize: 18, fontWeight: 700, color: C.text, marginTop: 8 }}>{profile?.full_name}</div>
-        <div style={{ fontSize: 12, color: C.text3, marginTop: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
           <span style={{
             padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
             background: isAdmin ? 'rgba(37,99,235,.15)' : 'rgba(16,185,129,.12)',
@@ -111,8 +113,24 @@ export default function ProfilePage() {
           }}>
             {isAdmin ? 'Admin' : 'Employee'}
           </span>
+          {profile?.badge_title && (
+            <StaffBadgePill title={profile.badge_title} color={profile.badge_color} effect={profile.badge_effect} />
+          )}
         </div>
+        {isAdmin && (
+          <div onClick={() => setShowBadgeEditor(true)} style={{ fontSize: 11, color: '#3B82F6', cursor: 'pointer', marginTop: 8 }}>
+            {profile?.badge_title ? 'Edit badge' : 'Set badge'}
+          </div>
+        )}
       </div>
+
+      {showBadgeEditor && (
+        <StaffBadgeEditor
+          profile={profile}
+          onClose={() => setShowBadgeEditor(false)}
+          onSaved={refreshProfile}
+        />
+      )}
 
       {msg && (
         <div style={{ background: msg.startsWith('Error') ? 'rgba(248,113,113,.1)' : 'rgba(16,185,129,.1)', border: `1px solid ${msg.startsWith('Error') ? 'rgba(248,113,113,.2)' : 'rgba(16,185,129,.2)'}`, borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: msg.startsWith('Error') ? C.red : C.green, textAlign: 'center' }}>
