@@ -31,6 +31,9 @@ export function NavigationProvider({ children }) {
   const navigating = useRef(false) // guard against double-tap during animation
 
   // Auto-detect transition for raw navigate() calls
+  // Track both pathname AND search params to catch ?edit=X changes
+  const locationKey = location.pathname + location.search
+
   useEffect(() => {
     // Navigation completed — unlock
     navigating.current = false
@@ -69,12 +72,18 @@ export function NavigationProvider({ children }) {
     }
 
     prevPath.current = to
-  }, [location.pathname])
+  }, [locationKey])
+
+  // Safety: auto-unlock after 500ms in case location change doesn't trigger
+  function lockNav() {
+    navigating.current = true
+    setTimeout(() => { navigating.current = false }, 500)
+  }
 
   const navTo = useCallback((path, opts) => {
-    // Skip if already navigating or already on this page
     if (navigating.current) return
-    if (path === location.pathname) return
+    // Allow same pathname if search params differ (e.g. /sales → /sales?edit=X)
+    if (path === location.pathname && !path.includes('?') && !opts?.replace) return
 
     const fromPath = location.pathname
     const fromIdx = TAB_PATHS.indexOf(fromPath)
@@ -88,7 +97,7 @@ export function NavigationProvider({ children }) {
       transitionType.current = 'slide-left'
     }
 
-    navigating.current = true
+    lockNav()
     manualNav.current = true
     navigate(path, opts)
   }, [navigate, location.pathname])
@@ -96,16 +105,16 @@ export function NavigationProvider({ children }) {
   const navBack = useCallback(() => {
     if (navigating.current) return
     transitionType.current = 'slide-right'
-    navigating.current = true
+    lockNav()
     manualNav.current = true
     navigate(-1)
   }, [navigate])
 
   const navFade = useCallback((path, opts) => {
     if (navigating.current) return
-    if (path === location.pathname) return
+    if (path === location.pathname && !path.includes('?')) return
     transitionType.current = 'fade'
-    navigating.current = true
+    lockNav()
     manualNav.current = true
     navigate(path, opts)
   }, [navigate, location.pathname])

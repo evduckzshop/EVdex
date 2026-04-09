@@ -3,7 +3,7 @@ import { useSales, useBuys, useShows } from '../../hooks/useData'
 import { useAuth } from '../../context/AuthContext'
 import { C, Label, Input, ChipGroup, CtaButton, Toast } from './FormComponents'
 
-export default function QuickLog({ activeShowId, onDone }) {
+export default function QuickLog({ activeShowId, onDone, onSave }) {
   const { insert: insertSale } = useSales()
   const { insert: insertBuy } = useBuys()
   const { rows: shows } = useShows()
@@ -50,6 +50,7 @@ export default function QuickLog({ activeShowId, onDone }) {
 
       setCount(c => c + 1)
       setMsg({ text: `${type === 'sale' ? 'Sale' : 'Buy'} saved! (${count + 1} logged)`, type: 'success' })
+      if (onSave) onSave()
 
       if (rapidFire) {
         setDesc('')

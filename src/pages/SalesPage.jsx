@@ -175,7 +175,7 @@ export default function SalesPage() {
       )}
 
       {quickLog && !editId ? (
-        <QuickLog activeShowId={activeShowId || ''} onDone={() => { setQuickLog(false); navigate('/') }} />
+        <QuickLog activeShowId={activeShowId || ''} onDone={() => { setQuickLog(false); navigate('/') }} onSave={() => fetch()} />
       ) : (
       <>
       <Label top={false}>Sale type</Label>

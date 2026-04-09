@@ -172,7 +172,7 @@ export default function BuysPage() {
       )}
 
       {quickLog && !editId ? (
-        <QuickLog activeShowId={activeShowId || ''} onDone={() => { setQuickLog(false); navigate('/') }} />
+        <QuickLog activeShowId={activeShowId || ''} onDone={() => { setQuickLog(false); navigate('/') }} onSave={() => fetch()} />
       ) : (
       <>
       <Label top={false}>Purchase type</Label>
