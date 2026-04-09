@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { NavigationProvider } from './context/NavigationContext'
+import { ShowProvider } from './context/ShowContext'
 import { RequireAuth, RequireAdmin, RequireCustomer, AccessDenied, DeactivatedPage } from './components/auth/ProtectedRoute'
 import AppLayout from './components/layout/AppLayout'
 import CustomerLayout from './components/layout/CustomerLayout'
@@ -69,6 +70,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <NavigationProvider>
+      <ShowProvider>
       <AuthProvider>
         <Routes>
 
@@ -115,6 +117,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
+      </ShowProvider>
       </NavigationProvider>
     </BrowserRouter>
   )

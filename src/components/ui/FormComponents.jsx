@@ -205,9 +205,16 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
   function onMarket(v) {
     if (lockRef.current) return; lockRef.current = true
     setMarket(v)
-    const m = parseFloat(v) || 0, a = parseFloat(amount) || 0, p = parseFloat(pct) || 0
-    if (m > 0 && a > 0) setPct(String(Math.round((a / m) * 1000) / 10))
-    else if (m > 0 && p > 0) setAmount(String(Math.round(m * p / 100 * 100) / 100))
+    const m = parseFloat(v) || 0, p = parseFloat(pct) || 0
+    // If no % yet, auto-fill to 100
+    if (m > 0 && !p) {
+      setPct('100')
+      setAmount(String(Math.round(m * 100) / 100))
+    }
+    // % stays fixed, recalculate price
+    else if (m > 0 && p > 0) {
+      setAmount(String(Math.round(m * p / 100 * 100) / 100))
+    }
     lockRef.current = false
   }
   function onAmount(v) {

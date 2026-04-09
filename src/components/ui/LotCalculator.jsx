@@ -3,11 +3,12 @@ import { C, DealCalc, Input } from './FormComponents'
 
 const MAX_ENTRIES = 100
 
-function TotalBar({ entries, isSale }) {
+function TotalBar({ entries, isSale, onAvgPctChange }) {
   const totalMarket = entries.reduce((s, e) => s + (parseFloat(e.market) || 0), 0)
   const totalPrice = entries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
   const avgPct = totalMarket > 0 ? Math.round((totalPrice / totalMarket) * 1000) / 10 : 0
   const filledCount = entries.filter(e => parseFloat(e.amount) > 0).length
+  const hasMarketEntries = entries.some(e => parseFloat(e.market) > 0)
 
   return (
     <div style={{
@@ -26,7 +27,25 @@ function TotalBar({ entries, isSale }) {
       </div>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Avg %</div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: C.accent2 }}>{avgPct > 0 ? `${avgPct}%` : '—'}</div>
+        {hasMarketEntries && onAvgPctChange ? (
+          <input
+            type="number"
+            inputMode="decimal"
+            value={avgPct > 0 ? avgPct : ''}
+            onChange={e => onAvgPctChange(e.target.value)}
+            placeholder="—"
+            style={{
+              width: '100%', maxWidth: 70, margin: '0 auto',
+              padding: '2px 4px', background: 'rgba(37,99,235,.08)',
+              border: '1px solid rgba(37,99,235,.3)', borderRadius: 6,
+              fontSize: 15, fontWeight: 700, color: C.accent2,
+              fontFamily: 'inherit', outline: 'none', textAlign: 'center',
+              boxSizing: 'border-box',
+            }}
+          />
+        ) : (
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.accent2 }}>{avgPct > 0 ? `${avgPct}%` : '—'}</div>
+        )}
       </div>
       <div style={{ gridColumn: '1 / -1', textAlign: 'center', fontSize: 9, color: C.text3, marginTop: 2 }}>
         {filledCount} of {entries.length} entries filled
@@ -47,11 +66,22 @@ export default function LotCalculator({ entries, setEntries, isSale = false }) {
     setEntries(prev => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e))
   }
 
+  function distributeAvgPct(newPct) {
+    const p = parseFloat(newPct)
+    if (!p || p <= 0) return
+    setEntries(prev => prev.map(e => {
+      const m = parseFloat(e.market) || 0
+      if (m <= 0) return e // skip entries without market value
+      const newPrice = Math.round(m * p / 100 * 100) / 100
+      return { ...e, pct: String(p), amount: String(newPrice) }
+    }))
+  }
+
   function setEntryCount(count) {
     const num = Math.max(1, Math.min(MAX_ENTRIES, parseInt(count) || 1))
     setEntries(prev => {
       if (num > prev.length) {
-        return [...prev, ...Array(num - prev.length).fill(null).map(() => ({ market: '', amount: '', pct: '', description: '', showDesc: false }))]
+        return [...prev, ...Array(num - prev.length).fill(null).map(() => ({ market: '', amount: '', pct: '', description: '', showDesc: true }))]
       }
       return prev.slice(0, num)
     })
@@ -59,7 +89,7 @@ export default function LotCalculator({ entries, setEntries, isSale = false }) {
 
   function addEntry() {
     if (entries.length >= MAX_ENTRIES) return
-    setEntries(prev => [...prev, { market: '', amount: '', pct: '', description: '', showDesc: false }])
+    setEntries(prev => [...prev, { market: '', amount: '', pct: '', description: '', showDesc: true }])
   }
 
   function removeEntry(idx) {
@@ -96,7 +126,7 @@ export default function LotCalculator({ entries, setEntries, isSale = false }) {
       </div>
 
       {/* Top total bar */}
-      <TotalBar entries={entries} isSale={isSale} />
+      <TotalBar entries={entries} isSale={isSale} onAvgPctChange={distributeAvgPct} />
 
       {/* Entry cards */}
       <div style={{ marginTop: 10 }}>
@@ -195,7 +225,7 @@ export default function LotCalculator({ entries, setEntries, isSale = false }) {
       )}
 
       {/* Bottom total bar */}
-      <TotalBar entries={entries} isSale={isSale} />
+      <TotalBar entries={entries} isSale={isSale} onAvgPctChange={distributeAvgPct} />
     </div>
   )
 }
@@ -214,7 +244,7 @@ export function entriesToLotData(entries) {
 
 // Helper to convert lot_entries JSON back to entry state
 export function lotDataToEntries(lotEntries) {
-  if (!lotEntries?.length) return [{ market: '', amount: '', pct: '', description: '', showDesc: false }]
+  if (!lotEntries?.length) return [{ market: '', amount: '', pct: '', description: '', showDesc: true }]
   return lotEntries.map(e => ({
     market: e.market_value ? String(e.market_value) : '',
     amount: e.price ? String(e.price) : '',

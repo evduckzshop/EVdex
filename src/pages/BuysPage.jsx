@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useBuys, useContacts, useShows } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
 import { uploadPhoto } from '../lib/supabase'
+import { useActiveShow } from '../context/ShowContext'
 import { C, Label, Input, Select, ChipGroup, DealCalc, CtaButton, GhostButton, Toast, RecordCard, AutocompleteInput, PaymentPicker } from '../components/ui/FormComponents'
 import LotCalculator, { entriesToLotData, lotDataToEntries, computeLotTotals } from '../components/ui/LotCalculator'
 import QuickLog from '../components/ui/QuickLog'
@@ -12,6 +13,7 @@ export default function BuysPage() {
   const { rows: contacts, fetch: fetchContacts } = useContacts()
   const { rows: shows, fetch: fetchShows } = useShows()
   const { profile } = useAuth()
+  const { activeShowId } = useActiveShow()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const lockRef = useRef(false)
@@ -30,18 +32,23 @@ export default function BuysPage() {
   const [sourceContactId, setSourceContactId] = useState(null)
   const [payment, setPayment] = useState('Cash')
   const [notes, setNotes] = useState('')
-  const [showId, setShowId] = useState(searchParams.get('show') || '')
+  const [showId, setShowId] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const [photoName, setPhotoName] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [quickLog, setQuickLog] = useState(false)
-  const [lotEntries, setLotEntries] = useState([{ market: '', amount: '', pct: '', description: '', showDesc: false }])
+  const [lotEntries, setLotEntries] = useState([{ market: '', amount: '', pct: '', description: '', showDesc: true }])
 
   const isLot = buyType === 'Lot'
   const isSlab = buyType === 'Slabs'
 
   useEffect(() => { fetch(); fetchContacts(); fetchShows() }, [])
+
+  // Sync show from global active show (unless editing)
+  useEffect(() => {
+    if (!editId && activeShowId) setShowId(activeShowId)
+  }, [activeShowId, editId])
 
   // Pre-fill form when editing
   useEffect(() => {
@@ -138,7 +145,7 @@ export default function BuysPage() {
   function resetForm() {
     setBuyType('Singles'); setDesc(''); setQty(''); setCondition('NM')
     setMarket(''); setPaid(''); setPct(''); setSource(''); setSourceContactId(null); setPayment('Cash')
-    setNotes(''); setShowId(''); setPhotoFile(null); setPhotoName(''); setLotEntries([{ market: '', amount: '', pct: '', description: '', showDesc: false }])
+    setNotes(''); setShowId(''); setPhotoFile(null); setPhotoName(''); setLotEntries([{ market: '', amount: '', pct: '', description: '', showDesc: true }])
   }
 
   return (
@@ -165,7 +172,7 @@ export default function BuysPage() {
       )}
 
       {quickLog && !editId ? (
-        <QuickLog activeShowId={searchParams.get('show') || ''} onDone={() => { setQuickLog(false); navigate('/') }} />
+        <QuickLog activeShowId={activeShowId || ''} onDone={() => { setQuickLog(false); navigate('/') }} />
       ) : (
       <>
       <Label top={false}>Purchase type</Label>

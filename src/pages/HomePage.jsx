@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useNav } from '../context/NavigationContext'
+import { useActiveShow } from '../context/ShowContext'
 import { supabase, logActivity } from '../lib/supabase'
 import PullToRefresh from '../components/ui/PullToRefresh'
 
@@ -238,10 +239,10 @@ export default function HomePage() {
   const { isAdmin, profile } = useAuth()
   const navigate = useNavigate()
   const { navTo, navFade } = useNav()
+  const { activeShowId, selectShow, clearShow } = useActiveShow()
   const [stats, setStats] = useState({ todaySales: 0, todayBuys: 0, todayExpenses: 0, txCount: 0, weekSales: 0, weekBuys: 0 })
   const [activity, setActivity] = useState([])
   const [shows, setShows] = useState([])
-  const [activeShowId, setActiveShowId] = useState(null)
   const [liveShow, setLiveShow] = useState({ sales: 0, buys: 0, fee: 0 })
   const [loading, setLoading] = useState(true)
   const [selectedItem, setSelectedItem] = useState(null)
@@ -324,10 +325,10 @@ export default function HomePage() {
     }
   }
 
-  function selectShow(id) {
-    if (activeShowId === id) { setActiveShowId(null); return }
-    setActiveShowId(id)
-    loadShowStats(id)
+  function handleSelectShow(id) {
+    const show = shows.find(s => s.id === id)
+    selectShow(id, show?.name)
+    if (activeShowId !== id) loadShowStats(id)
   }
 
   // Refresh show stats when page loads (e.g. coming back from logging a sale)
@@ -395,7 +396,7 @@ export default function HomePage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase' }}>Show in progress</div>
             {activeShowId && (
-              <div onClick={() => setActiveShowId(null)} style={{ fontSize: 10, fontWeight: 600, color: C.red, cursor: 'pointer', padding: '3px 9px', background: 'rgba(248,113,113,.08)', borderRadius: 7 }}>
+              <div onClick={() => clearShow()} style={{ fontSize: 10, fontWeight: 600, color: C.red, cursor: 'pointer', padding: '3px 9px', background: 'rgba(248,113,113,.08)', borderRadius: 7 }}>
                 End show
               </div>
             )}
@@ -404,7 +405,7 @@ export default function HomePage() {
             {shows.map(show => (
               <div
                 key={show.id}
-                onClick={() => selectShow(show.id)}
+                onClick={() => handleSelectShow(show.id)}
                 style={{
                   flexShrink: 0, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', minWidth: 130,
                   background: activeShowId === show.id ? 'rgba(245,158,11,.06)' : C.surface,

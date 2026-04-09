@@ -4,6 +4,7 @@ import { useSales, useShows } from '../hooks/useData'
 import { useContacts } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
 import { uploadPhoto } from '../lib/supabase'
+import { useActiveShow } from '../context/ShowContext'
 import { C, Label, Input, Select, ChipGroup, DealCalc, CtaButton, GhostButton, Toast, RecordCard, AutocompleteInput, PaymentPicker } from '../components/ui/FormComponents'
 import LotCalculator, { entriesToLotData, lotDataToEntries, computeLotTotals } from '../components/ui/LotCalculator'
 import QuickLog from '../components/ui/QuickLog'
@@ -13,6 +14,7 @@ export default function SalesPage() {
   const { rows: contacts, fetch: fetchContacts } = useContacts()
   const { rows: shows, fetch: fetchShows } = useShows()
   const { profile } = useAuth()
+  const { activeShowId } = useActiveShow()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const lockRef = useRef(false)
@@ -30,17 +32,22 @@ export default function SalesPage() {
   const [buyer, setBuyer] = useState('')
   const [buyerContactId, setBuyerContactId] = useState(null)
   const [payment, setPayment] = useState('Cash')
-  const [showId, setShowId] = useState(searchParams.get('show') || '')
+  const [showId, setShowId] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const [photoName, setPhotoName] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [quickLog, setQuickLog] = useState(false)
-  const [lotEntries, setLotEntries] = useState([{ market: '', amount: '', pct: '', description: '', showDesc: false }])
+  const [lotEntries, setLotEntries] = useState([{ market: '', amount: '', pct: '', description: '', showDesc: true }])
 
   const isLot = saleType === 'Lot'
 
   useEffect(() => { fetch(); fetchContacts(); fetchShows() }, [])
+
+  // Sync show from global active show (unless editing)
+  useEffect(() => {
+    if (!editId && activeShowId) setShowId(activeShowId)
+  }, [activeShowId, editId])
 
   // Pre-fill form when editing
   useEffect(() => {
@@ -140,7 +147,7 @@ export default function SalesPage() {
   }
 
   function resetForm() {
-    setSaleType('Single card'); setCustomSaleType(''); setDesc(''); setMarket(''); setPrice(''); setPct(''); setLotEntries([{ market: '', amount: '', pct: '', description: '', showDesc: false }])
+    setSaleType('Single card'); setCustomSaleType(''); setDesc(''); setMarket(''); setPrice(''); setPct(''); setLotEntries([{ market: '', amount: '', pct: '', description: '', showDesc: true }])
     setCost(''); setBuyer(''); setBuyerContactId(null); setPayment('Cash'); setShowId(''); setPhotoFile(null); setPhotoName('')
   }
 
@@ -168,7 +175,7 @@ export default function SalesPage() {
       )}
 
       {quickLog && !editId ? (
-        <QuickLog activeShowId={searchParams.get('show') || ''} onDone={() => { setQuickLog(false); navigate('/') }} />
+        <QuickLog activeShowId={activeShowId || ''} onDone={() => { setQuickLog(false); navigate('/') }} />
       ) : (
       <>
       <Label top={false}>Sale type</Label>
