@@ -265,11 +265,15 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: collapsible && !sliderOpen ? 0 : 10 }}>
-        {[
-          { label: isSale ? 'Sale price ($)' : 'You paid ($)', val: amount, set: onAmount, pctField: false },
+        {(isSale ? [
+          { label: 'Sale price ($)', val: amount, set: onAmount, pctField: false },
           { label: 'Total market ($)', val: market, set: onMarket, pctField: false },
           { label: '% of market', val: pct, set: onPct, pctField: true },
-        ].map(f => (
+        ] : [
+          { label: 'Total market ($)', val: market, set: onMarket, pctField: false },
+          { label: 'You paid ($)', val: amount, set: onAmount, pctField: false },
+          { label: '% of market', val: pct, set: onPct, pctField: true },
+        ]).map(f => (
           <div key={f.label}>
             <div style={{ fontSize: 9, color: C.text3, marginBottom: 4, fontWeight: 500 }}>{f.label}</div>
             <input

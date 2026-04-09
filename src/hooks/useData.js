@@ -68,8 +68,11 @@ function useTable(tableName) {
   const remove = useCallback(async (id) => {
     if (!user) throw new Error('Not authenticated')
     const before = rows.find(r => r.id === id)
-    const { error } = await supabase.from(tableName).delete().eq('id', id)
+    const { error, count } = await supabase.from(tableName).delete().eq('id', id).select()
     if (error) throw error
+    // Verify the delete actually happened (RLS can silently block)
+    const { data: check } = await supabase.from(tableName).select('id').eq('id', id).maybeSingle()
+    if (check) throw new Error('Delete was blocked by permissions. Contact your admin.')
     await logActivity({
       actionType: `delete_${tableName.replace(/s$/, '')}`,
       entityType: tableName,
