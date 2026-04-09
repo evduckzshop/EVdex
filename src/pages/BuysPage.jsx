@@ -181,11 +181,7 @@ export default function BuysPage() {
 
       <PaymentPicker options={['Cash','Venmo','Zelle']} value={payment} onChange={setPayment} />
 
-      {isLot && (
-        <div style={{ fontSize: 10, color: C.text3, background: 'rgba(255,255,255,.03)', borderRadius: 8, padding: '7px 10px', marginTop: 8, textAlign: 'center' }}>
-          Lot purchases — qty and condition not applicable
-        </div>
-      )}
+
 
       <Label>Description</Label>
       <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Singles Lot from evduckzshop" />
