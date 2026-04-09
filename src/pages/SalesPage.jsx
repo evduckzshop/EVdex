@@ -179,12 +179,12 @@ export default function SalesPage() {
       ) : (
       <>
       <Label top={false}>Sale type</Label>
-      <ChipGroup options={['Single card','Lot','Slab','Sealed','Other']} value={saleType} onChange={v => { setSaleType(v); if (v !== 'Other') setCustomSaleType('') }} color="green" />
+      <ChipGroup options={['Single card','Slabs','Sealed','Lot','Other']} value={saleType} onChange={v => { setSaleType(v); if (v !== 'Other') setCustomSaleType('') }} color="green" />
       {saleType === 'Other' && (
         <Input value={customSaleType} onChange={e => setCustomSaleType(e.target.value)} placeholder="Enter sale type..." style={{ marginTop: 8 }} />
       )}
 
-      <PaymentPicker options={['Cash','Venmo','Zelle','Card']} value={payment} onChange={setPayment} />
+      <PaymentPicker options={['Cash','Venmo','Zelle']} value={payment} onChange={setPayment} />
 
       <Label>Card / item name</Label>
       <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder={isLot ? "e.g. Bulk lot from card show" : "e.g. Charizard ex SAR 151"} />
