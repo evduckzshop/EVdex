@@ -249,7 +249,7 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
       else if (pctNum <= 65) { barColor = C.green; tagText = 'Great deal'; tagBg = 'rgba(16,185,129,.1)'; tagColor = C.green }
       else if (pctNum <= 75) { barColor = C.amber; tagText = 'Good deal'; tagBg = 'rgba(245,158,11,.12)'; tagColor = C.amber }
       else if (pctNum <= 85) { barColor = C.amber; tagText = 'Fair'; tagBg = 'rgba(245,158,11,.08)'; tagColor = C.amber }
-      else { barColor = C.red; tagText = pctNum > 100 ? 'Over market' : 'Slim margin'; tagBg = 'rgba(248,113,113,.1)'; tagColor = C.red }
+      else { barColor = pctNum > 100 ? C.red : '#F59E0B'; tagText = pctNum > 100 ? 'Over market' : 'Paying Strong'; tagBg = pctNum > 100 ? 'rgba(248,113,113,.1)' : 'rgba(245,158,11,.15)'; tagColor = pctNum > 100 ? C.red : '#F59E0B' }
     }
   }
 
