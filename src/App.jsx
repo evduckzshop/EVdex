@@ -34,6 +34,7 @@ const ReportingPage  = lazy(() => import('./pages/ReportingPage'))
 const ExportPage     = lazy(() => import('./pages/ExportPage'))
 const ActivityPage   = lazy(() => import('./pages/ActivityPage'))
 const SettingsPage   = lazy(() => import('./pages/SettingsPage'))
+const GamblePage     = lazy(() => import('./pages/GamblePage'))
 
 // Customer portal pages
 const PortalDashboard = lazy(() => import('./pages/portal/PortalDashboard'))
@@ -96,6 +97,7 @@ export default function App() {
           <Route path="/profile" element={<RequireAuth><Layout><ProfilePage /></Layout></RequireAuth>} />
           <Route path="/transactions" element={<RequireAuth><Layout><TransactionsPage /></Layout></RequireAuth>} />
           <Route path="/pong" element={<RequireAuth><Layout><PongPage /></Layout></RequireAuth>} />
+          <Route path="/gamble" element={<RequireAuth><Layout><GamblePage /></Layout></RequireAuth>} />
 
           {/* ── Admin only ── */}
           <Route path="/cashflow" element={<RequireAdmin><Layout><CashFlowPage /></Layout></RequireAdmin>} />

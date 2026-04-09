@@ -12,7 +12,7 @@ const TOP_LEVEL = new Set([
   ...TAB_PATHS,
   '/inventory', '/contacts', '/transactions', '/cashflow', '/pl',
   '/reporting', '/shows/compare', '/export', '/employees', '/activity',
-  '/settings', '/profile', '/pong',
+  '/settings', '/profile', '/pong', '/gamble',
   // Customer portal
   '/portal', '/portal/history', '/portal/badges', '/portal/profile',
 ])

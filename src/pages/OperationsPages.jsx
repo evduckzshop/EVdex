@@ -53,8 +53,8 @@ function LocationInput({ value, onChange }) {
 
 // ── EXPENSES PAGE ────────────────────────────────────────────────
 export function ExpensesPage() {
-  const { insert, rows, fetch, loading } = useExpenses()
-  const { profile } = useAuth()
+  const { insert, remove, rows, fetch, loading } = useExpenses()
+  const { profile, isAdmin } = useAuth()
   const navigate = useNavigate()
   const [category, setCategory] = useState('Show fees')
   const [desc, setDesc] = useState('')
@@ -62,6 +62,26 @@ export function ExpensesPage() {
   const [payment, setPayment] = useState('Cash')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
+  const [selectedExpense, setSelectedExpense] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete(id) {
+    if (!confirmDelete) { setConfirmDelete(true); return }
+    setDeleting(true)
+    try {
+      await remove(id)
+      setSelectedExpense(null)
+      setConfirmDelete(false)
+      setMsg({ text: 'Expense deleted.', type: 'success' })
+      setTimeout(() => setMsg({ text: '', type: '' }), 3000)
+    } catch (e) {
+      setMsg({ text: 'Error deleting: ' + e.message, type: 'error' })
+      setConfirmDelete(false)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   useEffect(() => { fetch() }, [])
 
@@ -99,8 +119,25 @@ export function ExpensesPage() {
       <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', margin: '20px 0 8px' }}>Recent expenses</div>
       {loading ? <div style={{ textAlign: 'center', color: C.text3, padding: 20 }}>Loading…</div>
         : rows.slice(0,10).map(r => (
-          <RecordCard key={r.id} item={r} amtColor={C.amber} amt={`-$${Number(r.amount).toFixed(0)}`}
-            meta={`${r.category} · ${r.payment||''} · ${new Date(r.created_at).toLocaleDateString()}`} />
+          <div key={r.id}>
+            <div onClick={() => { setSelectedExpense(selectedExpense === r.id ? null : r.id); setConfirmDelete(false) }} style={{ cursor: 'pointer' }}>
+              <RecordCard item={r} amtColor={C.amber} amt={`-$${Number(r.amount).toFixed(0)}`}
+                meta={`${r.category} · ${r.payment||''} · ${new Date(r.created_at).toLocaleDateString()}`} />
+            </div>
+            {isAdmin && selectedExpense === r.id && (
+              <div style={{ background: C.surface2, borderRadius: 10, padding: '10px 12px', marginBottom: 8, marginTop: -4, border: `1px solid ${C.border2}` }}>
+                <button onClick={() => handleDelete(r.id)} disabled={deleting} style={{
+                  width: '100%', padding: 10, borderRadius: 9, fontSize: 12, fontWeight: 600,
+                  cursor: deleting ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                  background: confirmDelete ? '#DC2626' : 'rgba(248,113,113,.08)',
+                  border: confirmDelete ? 'none' : '1px solid rgba(248,113,113,.2)',
+                  color: confirmDelete ? '#fff' : C.red,
+                }}>
+                  {deleting ? 'Deleting...' : confirmDelete ? 'Tap again to confirm' : 'Delete expense'}
+                </button>
+              </div>
+            )}
+          </div>
         ))}
       <div style={{ height: 16 }} />
     </div>
