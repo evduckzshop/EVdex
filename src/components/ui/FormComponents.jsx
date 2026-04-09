@@ -238,7 +238,7 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
   const mktNum = parseFloat(market) || 0
   const hasData = pctNum > 0 && (mktNum > 0 || amtNum > 0)
 
-  let barColor = '#475569', tagText = 'Enter values', tagBg = 'rgba(255,255,255,.05)', tagColor = C.text3
+  let barColor = '#475569', tagText = 'Enter values', tagBg = 'rgba(255,255,255,.05)', tagColor = C.text3, tagGlow = ''
   if (hasData) {
     if (isSale) {
       if (pctNum >= 90) { barColor = C.green; tagText = 'Strong'; tagBg = 'rgba(16,185,129,.15)'; tagColor = C.green }
@@ -247,9 +247,9 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
     } else {
       if (pctNum <= 50) { barColor = C.green; tagText = 'Steal'; tagBg = 'rgba(16,185,129,.15)'; tagColor = C.green }
       else if (pctNum <= 65) { barColor = C.green; tagText = 'Great deal'; tagBg = 'rgba(16,185,129,.1)'; tagColor = C.green }
-      else if (pctNum <= 75) { barColor = C.amber; tagText = 'Good deal'; tagBg = 'rgba(245,158,11,.12)'; tagColor = C.amber }
+      else if (pctNum <= 75) { barColor = '#2DD4BF'; tagText = 'Good deal'; tagBg = 'rgba(45,212,191,.12)'; tagColor = '#2DD4BF' }
       else if (pctNum <= 85) { barColor = C.amber; tagText = 'Fair'; tagBg = 'rgba(245,158,11,.08)'; tagColor = C.amber }
-      else { barColor = pctNum > 100 ? C.red : '#F59E0B'; tagText = pctNum > 100 ? 'Over market' : 'Paying Strong'; tagBg = pctNum > 100 ? 'rgba(248,113,113,.1)' : 'rgba(245,158,11,.15)'; tagColor = pctNum > 100 ? C.red : '#F59E0B' }
+      else { barColor = pctNum > 100 ? C.red : '#F59E0B'; tagText = pctNum > 100 ? 'Over market' : 'Paying Strong'; tagBg = pctNum > 100 ? 'rgba(248,113,113,.1)' : 'rgba(245,158,11,.15)'; tagColor = pctNum > 100 ? C.red : '#F59E0B'; if (pctNum <= 100) tagGlow = '0 0 8px rgba(245,158,11,.4), 0 0 16px rgba(245,158,11,.2)' }
     }
   }
 
@@ -323,7 +323,7 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
                   {hasData ? `${pctNum}%` : '— %'}
                 </div>
               </div>
-              <div style={{ fontSize: 10, fontWeight: 700, padding: '4px 9px', borderRadius: 20, background: tagBg, color: tagColor }}>
+              <div style={{ fontSize: 10, fontWeight: 700, padding: '4px 9px', borderRadius: 20, background: tagBg, color: tagColor, boxShadow: tagGlow || 'none', transition: 'box-shadow .3s ease' }}>
                 {tagText}
               </div>
             </div>
