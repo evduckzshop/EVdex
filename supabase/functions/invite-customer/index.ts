@@ -1,9 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const ALLOWED_ORIGIN = Deno.env.get('SITE_URL') || 'http://localhost:3000'
 const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
@@ -164,18 +163,16 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
   } catch (error) {
-    const msg = (error as Error).message || ''
-    // Sanitize: only return safe error messages, not DB internals
-    const safeErrors = [
-      'Missing authorization header', 'Unauthorized', 'Only admins can invite customers',
-      'email and fullName are required', 'Invalid email format', 'Contact not found',
-      'This contact is already linked to a customer account', 'Failed to send invite',
-      'Failed to create user account', 'Not authenticated',
-    ]
-    const safeMsg = safeErrors.find(e => msg.includes(e)) || 'An error occurred. Please try again.'
-    console.error('invite-customer error:', msg) // Log full error server-side
+    const msg = (error as Error).message || 'Unknown error'
+    console.error('invite-customer error:', msg)
+    // Map technical errors to user-friendly messages
+    let userMsg = msg
+    if (msg.includes('rate limit')) userMsg = 'Email rate limit reached. Please wait an hour and try again.'
+    else if (msg.includes('already been registered') || msg.includes('already exists')) userMsg = 'An account with this email already exists.'
+    else if (msg.includes('duplicate')) userMsg = 'This contact is already linked to a customer account.'
+    else if (msg.includes('violates') || msg.includes('constraint')) userMsg = 'A database error occurred. Please try again.'
     return new Response(
-      JSON.stringify({ error: safeMsg }),
+      JSON.stringify({ error: userMsg }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     )
   }
