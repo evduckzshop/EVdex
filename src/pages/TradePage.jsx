@@ -45,7 +45,7 @@ function TradeCalculator({ onSaved }) {
 
   // Their side calculations
   const theirTotalMarket = theirItems.reduce((s, i) => s + (parseFloat(i.market) || 0), 0)
-  const theirTotalTrade = theirItems.reduce((s, i) => s + calcTradeValue(i.market, i.pct), 0)
+  const theirTotalTrade = theirItems.reduce((s, i) => s + (parseFloat(i.tradeValue) || 0), 0)
   const theirAvgPct = theirTotalMarket > 0 ? Math.round((theirTotalTrade / theirTotalMarket) * 1000) / 10 : 0
 
   // Your side calculations
@@ -59,7 +59,15 @@ function TradeCalculator({ onSaved }) {
     setTheirItems(prev => prev.map((item, i) => {
       if (i !== idx) return item
       const updated = { ...item, [field]: value }
-      updated.tradeValue = String(calcTradeValue(updated.market, updated.pct))
+      if (field === 'tradeValue') {
+        // Back-calculate trade % from manual trade value
+        const m = parseFloat(updated.market) || 0
+        const tv = parseFloat(value) || 0
+        if (m > 0) updated.pct = String(Math.round(tv / m * 1000) / 10)
+      } else {
+        // Auto-calculate trade value from market & %
+        updated.tradeValue = String(calcTradeValue(updated.market, updated.pct))
+      }
       return updated
     }))
   }
@@ -98,7 +106,7 @@ function TradeCalculator({ onSaved }) {
           description: i.description.trim() || null,
           market_value: parseFloat(i.market) || 0,
           trade_pct: parseFloat(i.pct) || 0,
-          trade_value: calcTradeValue(i.market, i.pct),
+          trade_value: parseFloat(i.tradeValue) || 0,
         })),
         your_items: filledYour.map(i => ({
           description: i.description.trim() || null,
@@ -261,9 +269,11 @@ function TradeCalculator({ onSaved }) {
             </div>
             <div>
               <div style={{ fontSize: 8, color: C.text3, marginBottom: 3 }}>Trade value</div>
-              <div style={{ padding: '7px 6px', background: 'rgba(245,158,11,.05)', border: '1px solid rgba(245,158,11,.2)', borderRadius: 7, fontSize: 13, fontWeight: 600, color: C.amber, textAlign: 'center' }}>
-                ${calcTradeValue(item.market, item.pct).toFixed(2)}
-              </div>
+              <input type="number" inputMode="decimal" min="0" value={item.tradeValue}
+                onChange={e => { const v = e.target.value; if (v === '' || parseFloat(v) >= 0) updateTheirItem(idx, 'tradeValue', v) }}
+                placeholder="0.00"
+                style={{ width: '100%', padding: '7px 6px', background: 'rgba(245,158,11,.05)', border: '1px solid rgba(245,158,11,.2)', borderRadius: 7, fontSize: 13, fontWeight: 600, color: C.amber, fontFamily: 'inherit', outline: 'none', textAlign: 'center', boxSizing: 'border-box' }}
+              />
             </div>
           </div>
         </div>
