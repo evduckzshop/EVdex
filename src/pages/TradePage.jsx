@@ -4,7 +4,7 @@ import { useTrades, useContacts, useShows } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
 import { useActiveShow } from '../context/ShowContext'
 import { uploadPhoto } from '../lib/supabase'
-import { C, Label, Input, Select, CtaButton, GhostButton, Toast, AutocompleteInput } from '../components/ui/FormComponents'
+import { C, Label, Input, Select, ChipGroup, CtaButton, GhostButton, Toast, AutocompleteInput } from '../components/ui/FormComponents'
 
 const MAX_ITEMS = 100
 
@@ -39,6 +39,10 @@ function TradeCalculator({ onSaved }) {
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [showValueBar, setShowValueBar] = useState(false)
+  const [showSettlement, setShowSettlement] = useState(false)
+  const [settlementPayment, setSettlementPayment] = useState('Cash')
+  const [settlementAmount, setSettlementAmount] = useState('')
+  const [customPayment, setCustomPayment] = useState('')
 
   useEffect(() => { fetchContacts(); fetchShows() }, [])
   useEffect(() => { if (activeShowId) setShowId(activeShowId) }, [activeShowId])
@@ -89,16 +93,30 @@ function TradeCalculator({ onSaved }) {
     inp.click()
   }
 
-  async function handleConfirm() {
+  function handleConfirm() {
     const filledTheir = theirItems.filter(i => parseFloat(i.market) > 0)
     const filledYour = yourItems.filter(i => parseFloat(i.price) > 0)
     if (filledTheir.length === 0 && filledYour.length === 0) {
       setMsg({ text: 'Add at least one item to either side.', type: 'error' }); return
     }
+    if (delta !== 0) {
+      setSettlementAmount(Math.abs(delta).toFixed(2))
+      setSettlementPayment('Cash')
+      setCustomPayment('')
+      setShowSettlement(true)
+    } else {
+      saveTrade(null, null)
+    }
+  }
+
+  async function saveTrade(paymentMethod, amountPaid) {
     setSaving(true)
     try {
       let photo_url = null
       if (photoFile) photo_url = await uploadPhoto(profile.id, photoFile)
+
+      const filledTheir = theirItems.filter(i => parseFloat(i.market) > 0)
+      const filledYour = yourItems.filter(i => parseFloat(i.price) > 0)
 
       const record = {
         description: description.trim() || null,
@@ -121,10 +139,13 @@ function TradeCalculator({ onSaved }) {
         buyer_contact_id: contactId || null,
         show_id: showId || null,
         photo_url,
+        payment_method: paymentMethod || null,
+        amount_paid: amountPaid != null ? parseFloat(amountPaid) || 0 : null,
       }
 
       await insert(record)
       setMsg({ text: 'Trade confirmed!', type: 'success' })
+      setShowSettlement(false)
 
       // Reset
       setTheirItems([emptyItem()])
@@ -349,6 +370,72 @@ function TradeCalculator({ onSaved }) {
       <CtaButton onClick={handleConfirm} disabled={saving} color="accent">
         {saving ? 'Saving...' : 'Confirm Trade'}
       </CtaButton>
+
+      {/* ── SETTLEMENT POPUP ────────────────────────────────── */}
+      {showSettlement && (
+        <>
+          <div onClick={() => setShowSettlement(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 300 }} />
+          <div style={{
+            position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+            width: '100%', maxWidth: 390, zIndex: 301,
+            background: '#0F172A', borderRadius: '20px 20px 0 0',
+            padding: '16px 18px max(20px, env(safe-area-inset-bottom))',
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.15)', margin: '0 auto 14px' }} />
+
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 4 }}>Settle difference</div>
+            <div style={{ fontSize: 12, color: C.text3, marginBottom: 16 }}>
+              {delta > 0 ? 'Customer owes' : 'You owe'} <span style={{ fontWeight: 600, color: delta > 0 ? C.green : C.red }}>${Math.abs(delta).toFixed(2)}</span> on top of the trade
+            </div>
+
+            <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>Payment method</div>
+            <ChipGroup
+              options={['Cash', 'Venmo', 'Zelle', 'Other']}
+              value={['Cash', 'Venmo', 'Zelle'].includes(settlementPayment) ? settlementPayment : 'Other'}
+              onChange={v => { if (v === 'Other') { setSettlementPayment(customPayment || 'Other') } else { setSettlementPayment(v); setCustomPayment('') } }}
+              color="green"
+            />
+            {!['Cash', 'Venmo', 'Zelle'].includes(settlementPayment) && (
+              <input
+                value={customPayment}
+                onChange={e => { setCustomPayment(e.target.value); setSettlementPayment(e.target.value || 'Other') }}
+                placeholder="Enter payment method..."
+                style={{
+                  width: '100%', padding: '8px 10px', marginTop: 8, background: C.surface2,
+                  border: `1px solid ${C.border2}`, borderRadius: 8, fontSize: 12,
+                  color: C.text, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+            )}
+
+            <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.06em', textTransform: 'uppercase', marginTop: 14, marginBottom: 6 }}>Amount paid</div>
+            <input
+              type="number" inputMode="decimal" min="0"
+              value={settlementAmount}
+              onChange={e => { const v = e.target.value; if (v === '' || parseFloat(v) >= 0) setSettlementAmount(v) }}
+              style={{
+                width: '100%', padding: '10px 12px', background: C.surface2,
+                border: `1px solid ${C.border2}`, borderRadius: 10, fontSize: 16,
+                color: C.text, fontFamily: 'inherit', outline: 'none', fontWeight: 600,
+                textAlign: 'center', boxSizing: 'border-box',
+              }}
+            />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
+              <button onClick={() => setShowSettlement(false)} style={{
+                padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.05)',
+                border: `1px solid ${C.border}`, fontSize: 13, fontWeight: 600,
+                color: C.text3, cursor: 'pointer', fontFamily: 'inherit',
+              }}>Cancel</button>
+              <button onClick={() => saveTrade(settlementPayment, settlementAmount)} disabled={saving} style={{
+                padding: 12, borderRadius: 12, background: 'rgba(37,99,235,.15)',
+                border: '1px solid rgba(37,99,235,.3)', fontSize: 13, fontWeight: 600,
+                color: C.accent2, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+              }}>{saving ? 'Saving...' : 'Confirm'}</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -450,6 +537,22 @@ function TradeDetail({ trade, onClose, isAdmin, onDelete }) {
               ))}
             </div>
           </>
+        )}
+
+        {/* Settlement info */}
+        {trade.payment_method && (
+          <div style={{
+            background: C.surface, borderRadius: 10, padding: '8px 12px', marginBottom: 10,
+            border: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <div>
+              <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Difference paid via</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{trade.payment_method}</div>
+            </div>
+            {trade.amount_paid != null && (
+              <div style={{ fontSize: 16, fontWeight: 700, color: C.accent2 }}>${Number(trade.amount_paid).toFixed(2)}</div>
+            )}
+          </div>
         )}
 
         {/* Meta */}
