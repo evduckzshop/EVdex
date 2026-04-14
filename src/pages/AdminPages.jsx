@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, updateProfile } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import {
   getDateRange, formatDateRange, computeSummary,
@@ -604,9 +604,34 @@ export function ActivityPage() {
 
 // ── SETTINGS ─────────────────────────────────────────────────────
 export function SettingsPage() {
-  const { profile } = useAuth()
+  const { profile, refreshProfile } = useAuth()
   const [defaultPay, setDefaultPay] = useState('Cash')
   const [saved, setSaved] = useState(false)
+  const [defaultSalePct, setDefaultSalePct] = useState(profile?.settings?.default_sale_pct ?? '100')
+  const [defaultBuyPct, setDefaultBuyPct] = useState(profile?.settings?.default_buy_pct ?? '100')
+  const [defaultTradePct, setDefaultTradePct] = useState(profile?.settings?.default_trade_pct ?? '100')
+  const [savingPct, setSavingPct] = useState(false)
+  const [pctMsg, setPctMsg] = useState('')
+
+  async function handleSavePct() {
+    setSavingPct(true)
+    try {
+      const settings = {
+        ...(profile?.settings || {}),
+        default_sale_pct: parseFloat(defaultSalePct) || 100,
+        default_buy_pct: parseFloat(defaultBuyPct) || 100,
+        default_trade_pct: parseFloat(defaultTradePct) || 100,
+      }
+      await updateProfile(profile.id, { settings })
+      await refreshProfile()
+      setPctMsg('Default percentages saved!')
+      setTimeout(() => setPctMsg(''), 3000)
+    } catch (e) {
+      setPctMsg('Error: ' + e.message)
+    } finally {
+      setSavingPct(false)
+    }
+  }
 
   function save() { setSaved(true); setTimeout(() => setSaved(false), 2500) }
 
@@ -628,6 +653,34 @@ export function SettingsPage() {
             {['Cash','Venmo','Zelle','Card'].map(p => <option key={p} style={{ background: C.surface }}>{p}</option>)}
           </select>
         </div>
+      </div>
+
+      <div style={sectionHd}>Default percentages</div>
+      {pctMsg && <div style={{ background: pctMsg.startsWith('Error') ? 'rgba(248,113,113,.1)' : 'rgba(16,185,129,.08)', border: `1px solid ${pctMsg.startsWith('Error') ? 'rgba(248,113,113,.2)' : 'rgba(16,185,129,.2)'}`, borderRadius: 10, padding: '10px 14px', marginBottom: 10, fontSize: 13, color: pctMsg.startsWith('Error') ? C.red : C.green }}>{pctMsg}</div>}
+      <div style={rcard}>
+        <div style={{ fontSize: 11, color: C.text3, marginBottom: 12 }}>Auto-fill % of market when logging transactions</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          {[
+            { label: 'Sales %', value: defaultSalePct, set: setDefaultSalePct, color: C.green },
+            { label: 'Buys %', value: defaultBuyPct, set: setDefaultBuyPct, color: C.red },
+            { label: 'Trade %', value: defaultTradePct, set: setDefaultTradePct, color: C.accent2 },
+          ].map(f => (
+            <div key={f.label}>
+              <div style={{ fontSize: 9, color: f.color, fontWeight: 600, marginBottom: 4, textAlign: 'center' }}>{f.label}</div>
+              <input
+                type="number" inputMode="decimal" min="0"
+                value={f.value}
+                onChange={e => { const v = e.target.value; if (v === '' || parseFloat(v) >= 0) f.set(v) }}
+                onFocus={e => e.target.select()}
+                placeholder="100"
+                style={{ width: '100%', padding: '9px 6px', background: C.surface2, border: `1px solid ${C.border2}`, borderRadius: 9, fontSize: 15, fontWeight: 600, color: C.text, fontFamily: 'inherit', outline: 'none', textAlign: 'center', boxSizing: 'border-box' }}
+              />
+            </div>
+          ))}
+        </div>
+        <button onClick={handleSavePct} disabled={savingPct} style={{ width: '100%', padding: 10, borderRadius: 10, background: 'rgba(37,99,235,.12)', border: '1px solid rgba(37,99,235,.25)', fontSize: 13, fontWeight: 600, color: '#3B82F6', cursor: savingPct ? 'not-allowed' : 'pointer', fontFamily: 'inherit', marginTop: 12 }}>
+          {savingPct ? 'Saving...' : 'Save defaults'}
+        </button>
       </div>
 
       <div style={sectionHd}>Team</div>
