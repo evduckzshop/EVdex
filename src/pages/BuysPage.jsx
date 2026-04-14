@@ -27,7 +27,8 @@ export default function BuysPage() {
   const [condition, setCondition] = useState('NM')
   const [market, setMarket] = useState('')
   const [paid, setPaid] = useState('')
-  const [pct, setPct] = useState('')
+  const defaultBuyPct = String(profile?.settings?.default_buy_pct ?? 100)
+  const [pct, setPct] = useState(defaultBuyPct)
   const [source, setSource] = useState('')
   const [sourceContactId, setSourceContactId] = useState(null)
   const [payment, setPayment] = useState('Cash')
@@ -145,7 +146,7 @@ export default function BuysPage() {
 
   function resetForm() {
     setBuyType('Singles'); setDesc(''); setQty(''); setCondition('NM')
-    setMarket(''); setPaid(''); setPct(''); setSource(''); setSourceContactId(null); setPayment('Cash')
+    setMarket(''); setPaid(''); setPct(defaultBuyPct); setSource(''); setSourceContactId(null); setPayment('Cash')
     setNotes(''); setShowId(''); setPhotoFile(null); setPhotoName(''); setLotEntries([{ market: '', amount: '', pct: '', description: '', showDesc: true }])
   }
 

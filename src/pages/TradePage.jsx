@@ -8,7 +8,7 @@ import { C, Label, Input, Select, ChipGroup, CtaButton, GhostButton, Toast, Auto
 
 const MAX_ITEMS = 100
 
-function emptyItem() { return { description: '', market: '', pct: '100', tradeValue: '' } }
+function emptyItem(defaultPct = '100') { return { description: '', market: '', pct: defaultPct, tradeValue: '' } }
 function emptyYourItem() { return { description: '', price: '' } }
 
 function calcTradeValue(market, pct) {
@@ -27,8 +27,9 @@ function TradeCalculator({ onSaved }) {
   const { profile } = useAuth()
   const { activeShowId } = useActiveShow()
   const userName = profile?.full_name?.split(' ')[0] || 'You'
+  const defaultTradePct = String(profile?.settings?.default_trade_pct ?? 100)
 
-  const [theirItems, setTheirItems] = useState([emptyItem()])
+  const [theirItems, setTheirItems] = useState([emptyItem(defaultTradePct)])
   const [yourItems, setYourItems] = useState([emptyYourItem()])
   const [contactName, setContactName] = useState('')
   const [contactId, setContactId] = useState(null)
@@ -80,7 +81,7 @@ function TradeCalculator({ onSaved }) {
     setYourItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item))
   }
 
-  function addTheirItem() { if (theirItems.length < MAX_ITEMS) setTheirItems(prev => [...prev, emptyItem()]) }
+  function addTheirItem() { if (theirItems.length < MAX_ITEMS) setTheirItems(prev => [...prev, emptyItem(defaultTradePct)]) }
   function addYourItem() { if (yourItems.length < MAX_ITEMS) setYourItems(prev => [...prev, emptyYourItem()]) }
 
   function removeTheirItem(idx) { if (theirItems.length > 1) setTheirItems(prev => prev.filter((_, i) => i !== idx)) }
@@ -148,7 +149,7 @@ function TradeCalculator({ onSaved }) {
       setShowSettlement(false)
 
       // Reset
-      setTheirItems([emptyItem()])
+      setTheirItems([emptyItem(defaultTradePct)])
       setYourItems([emptyYourItem()])
       setContactName(''); setContactId(null)
       setDescription(''); setPhotoFile(null); setPhotoName('')
@@ -284,6 +285,7 @@ function TradeCalculator({ onSaved }) {
               <div style={{ fontSize: 8, color: C.text3, marginBottom: 3 }}>Trade %</div>
               <input type="number" inputMode="decimal" min="0" value={item.pct}
                 onChange={e => { const v = e.target.value; if (v === '' || parseFloat(v) >= 0) updateTheirItem(idx, 'pct', v) }}
+                onFocus={e => e.target.select()}
                 placeholder="60"
                 style={{ width: '100%', padding: '7px 6px', background: 'rgba(37,99,235,.05)', border: '1px solid rgba(37,99,235,.3)', borderRadius: 7, fontSize: 13, color: C.accent2, fontFamily: 'inherit', outline: 'none', fontWeight: 600, textAlign: 'center', boxSizing: 'border-box' }}
               />

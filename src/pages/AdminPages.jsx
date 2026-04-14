@@ -606,7 +606,6 @@ export function ActivityPage() {
 export function SettingsPage() {
   const { profile } = useAuth()
   const [defaultPay, setDefaultPay] = useState('Cash')
-  const [lowStock, setLowStock] = useState('5')
   const [saved, setSaved] = useState(false)
 
   function save() { setSaved(true); setTimeout(() => setSaved(false), 2500) }
@@ -623,15 +622,11 @@ export function SettingsPage() {
 
       <div style={sectionHd}>Preferences</div>
       <div style={rcard}>
-        <div style={rrow}>
+        <div style={rrowLast}>
           <div style={{ fontSize: 13, color: C.text2 }}>Default payment method</div>
           <select value={defaultPay} onChange={e => setDefaultPay(e.target.value)} style={{ background: 'transparent', border: 'none', color: C.accent2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', outline: 'none' }}>
             {['Cash','Venmo','Zelle','Card'].map(p => <option key={p} style={{ background: C.surface }}>{p}</option>)}
           </select>
-        </div>
-        <div style={rrowLast}>
-          <div style={{ fontSize: 13, color: C.text2 }}>Low stock alert (qty)</div>
-          <input type="number" value={lowStock} onChange={e => setLowStock(e.target.value)} style={{ width: 60, background: 'transparent', border: 'none', color: C.accent2, fontSize: 13, fontWeight: 500, textAlign: 'right', fontFamily: 'inherit', outline: 'none' }} />
         </div>
       </div>
 

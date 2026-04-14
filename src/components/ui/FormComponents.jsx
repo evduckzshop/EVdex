@@ -283,6 +283,7 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
               min="0"
               value={f.val}
               onChange={e => { const v = e.target.value; if (v === '' || parseFloat(v) >= 0) f.set(v) }}
+              onFocus={f.pctField ? e => e.target.select() : undefined}
               placeholder={f.pctField ? '—' : '0.00'}
               style={{
                 width: '100%', padding: compact ? '8px 6px' : '10px 8px',

@@ -27,7 +27,8 @@ export default function SalesPage() {
   const [desc, setDesc] = useState('')
   const [market, setMarket] = useState('')
   const [price, setPrice] = useState('')
-  const [pct, setPct] = useState('')
+  const defaultSalePct = String(profile?.settings?.default_sale_pct ?? 100)
+  const [pct, setPct] = useState(defaultSalePct)
   const [cost, setCost] = useState('')
   const [buyer, setBuyer] = useState('')
   const [buyerContactId, setBuyerContactId] = useState(null)
@@ -147,7 +148,7 @@ export default function SalesPage() {
   }
 
   function resetForm() {
-    setSaleType('Singles'); setCustomSaleType(''); setDesc(''); setMarket(''); setPrice(''); setPct(''); setLotEntries([{ market: '', amount: '', pct: '', description: '', showDesc: true }])
+    setSaleType('Singles'); setCustomSaleType(''); setDesc(''); setMarket(''); setPrice(''); setPct(defaultSalePct); setLotEntries([{ market: '', amount: '', pct: '', description: '', showDesc: true }])
     setCost(''); setBuyer(''); setBuyerContactId(null); setPayment('Cash'); setShowId(''); setPhotoFile(null); setPhotoName('')
   }
 
