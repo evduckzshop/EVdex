@@ -630,11 +630,8 @@ export default function TradePage() {
                   {new Date(t.created_at).toLocaleDateString()}
                 </div>
               </div>
-              <div style={{
-                fontSize: 13, fontWeight: 600,
-                color: t.delta > 0 ? C.green : t.delta < 0 ? C.red : C.text3,
-              }}>
-                {t.delta > 0 ? '+' : t.delta < 0 ? '-' : ''}${Math.abs(t.delta).toFixed(0)}
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.green }}>
+                +${(Number(t.their_total_trade) + (t.delta > 0 ? (Number(t.amount_paid) || 0) : 0)).toFixed(0)}
               </div>
             </div>
           </div>

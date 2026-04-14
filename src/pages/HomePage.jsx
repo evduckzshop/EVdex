@@ -26,12 +26,15 @@ function StatCard({ label, value, color }) {
 function ActivityCard({ item, onTap }) {
   const isSale = item.type === 'sale'
   const isBuy = item.type === 'buy'
-  const color = isSale ? C.green : isBuy ? C.red : C.amber
-  const tagLabel = isSale ? 'Sale' : isBuy ? 'Buy' : 'Expense'
-  const tagBg = isSale ? 'rgba(16,185,129,.12)' : isBuy ? 'rgba(248,113,113,.12)' : 'rgba(245,158,11,.12)'
-  const amt = isSale
+  const isTrade = item.type === 'trade'
+  const color = isSale ? C.green : isBuy ? C.red : isTrade ? C.accent2 : C.amber
+  const tagLabel = isSale ? 'Sale' : isBuy ? 'Buy' : isTrade ? 'Trade' : 'Expense'
+  const tagBg = isSale ? 'rgba(16,185,129,.12)' : isBuy ? 'rgba(248,113,113,.12)' : isTrade ? 'rgba(37,99,235,.12)' : 'rgba(245,158,11,.12)'
+  const amt = isTrade
     ? `+$${Number(item.amount).toFixed(0)}`
-    : `-$${Number(item.amount).toFixed(0)}`
+    : isSale
+      ? `+$${Number(item.amount).toFixed(0)}`
+      : `-$${Number(item.amount).toFixed(0)}`
 
   return (
     <div onClick={() => onTap(item)} style={{ background: C.surface, borderRadius: 14, padding: '12px 14px', marginBottom: 8, border: `1px solid ${C.border}`, cursor: 'pointer' }}>
@@ -39,7 +42,7 @@ function ActivityCard({ item, onTap }) {
         <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {item.description}
+            {item.description || (isTrade ? `Trade · ${(item.their_items?.length || 0) + (item.your_items?.length || 0)} items` : '—')}
           </div>
           <div style={{ fontSize: 10, color: C.text3, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: tagBg, color, marginRight: 4 }}>
@@ -265,17 +268,19 @@ export default function HomePage() {
       const todayStart = new Date(); todayStart.setHours(0,0,0,0)
       const ts = todayStart.toISOString()
 
-      const [salesRes, buysRes, expRes, showsRes] = await Promise.all([
+      const [salesRes, buysRes, expRes, showsRes, tradesRes] = await Promise.all([
         supabase.from('sales').select('id,description,sale_type,sale_price,market_value,pct_of_market,cost_basis,buyer,payment,photo_url,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
         supabase.from('buys').select('id,description,buy_type,amount_paid,market_value,pct_of_market,qty,condition,source,payment,notes,photo_url,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
         supabase.from('expenses').select('id,description,category,amount,payment,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
         supabase.from('shows').select('*').in('status', ['upcoming','in_progress']).order('event_date', { ascending: true }),
+        supabase.from('trades').select('id,description,their_total_trade,their_total_market,your_total,delta,amount_paid,payment_method,their_items,your_items,created_at,profiles!created_by(full_name)').gte('created_at', ts).order('created_at', { ascending: false }),
       ])
 
       const sales = salesRes.data || []
       const buys = buysRes.data || []
       const expenses = expRes.data || []
       const showData = showsRes.data || []
+      const trades = tradesRes.data || []
 
       const todaySales = sales.reduce((s, r) => s + Number(r.sale_price), 0)
       const todayBuys = buys.reduce((s, r) => s + Number(r.amount_paid), 0)
@@ -299,6 +304,7 @@ export default function HomePage() {
         ...sales.map(r => ({ ...r, type: 'sale', amount: r.sale_price, pct: r.pct_of_market, who: r.profiles?.full_name })),
         ...buys.map(r => ({ ...r, type: 'buy', amount: r.amount_paid, pct: r.pct_of_market, who: r.profiles?.full_name })),
         ...expenses.map(r => ({ ...r, type: 'expense', amount: r.amount, who: r.profiles?.full_name })),
+        ...trades.map(r => ({ ...r, type: 'trade', amount: Number(r.their_total_trade) + (r.delta > 0 ? (Number(r.amount_paid) || 0) : 0), who: r.profiles?.full_name })),
       ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
       setActivity(merged)
@@ -349,6 +355,7 @@ export default function HomePage() {
     inventory:  { label: 'Inventory',  path: '/inventory',    bg: 'rgba(37,99,235,.08)',   color: '#60A5FA',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><rect x="2" y="3" width="14" height="12" rx="2" stroke="#60A5FA" strokeWidth="1.3"/><path d="M2 7h14" stroke="#60A5FA" strokeWidth="1.3"/></svg> },
     transactions:{ label: 'Transactions', path: '/transactions', bg: 'rgba(16,185,129,.08)', color: '#10B981', icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h12M3 13h8" stroke="#10B981" strokeWidth="1.3" strokeLinecap="round"/></svg> },
     quicklog:   { label: 'Quick log',  path: `/sales${showParam}?quick=1`, bg: 'rgba(124,58,237,.12)', color: '#A78BFA', icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M12 1l-3 7h5l-5 9 1-6H5l4-10z" stroke="#A78BFA" strokeWidth="1.2" strokeLinejoin="round"/></svg> },
+    trade:      { label: 'Trade',      path: '/trade',            bg: 'rgba(37,99,235,.12)',   color: '#3B82F6',  icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4 6h10M14 6l-3-3M4 12h10M4 12l3 3" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> },
   }
   const QUICK_ACTIONS = prefs.quickActions.map(k => ALL_ACTIONS[k]).filter(Boolean)
 
