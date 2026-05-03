@@ -82,7 +82,7 @@ export function ChipGroup({ options, value, onChange, color = 'accent' }) {
   )
 }
 
-export function PaymentPicker({ options, value, onChange }) {
+export function PaymentPicker({ options, value, onChange, label }) {
   const isOther = !options.includes(value)
   const [customValue, setCustomValue] = useState(isOther && value ? value : '')
 
@@ -102,7 +102,7 @@ export function PaymentPicker({ options, value, onChange }) {
 
   return (
     <>
-      <Label>Payment method</Label>
+      <Label>{label || 'Payment method'}</Label>
       <ChipGroup options={[...options, 'Other']} value={isOther ? 'Other' : value} onChange={handleChip} color="green" />
       {isOther && (
         <input

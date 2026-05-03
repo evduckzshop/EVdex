@@ -33,6 +33,10 @@ export default function SalesPage() {
   const [buyer, setBuyer] = useState('')
   const [buyerContactId, setBuyerContactId] = useState(null)
   const [payment, setPayment] = useState('Cash')
+  const [splitEnabled, setSplitEnabled] = useState(false)
+  const [splitMethod1, setSplitMethod1] = useState('Cash')
+  const [splitMethod2, setSplitMethod2] = useState('Venmo')
+  const [splitAmount1, setSplitAmount1] = useState('')
   const [showId, setShowId] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const [photoName, setPhotoName] = useState('')
@@ -70,6 +74,17 @@ export default function SalesPage() {
       setBuyer(editRecord.buyer || '')
       setBuyerContactId(editRecord.buyer_contact_id || null)
       setPayment(editRecord.payment || 'Cash')
+      if (editRecord.payment_split?.length === 2) {
+        setSplitEnabled(true)
+        setSplitMethod1(editRecord.payment_split[0].method)
+        setSplitMethod2(editRecord.payment_split[1].method)
+        setSplitAmount1(String(editRecord.payment_split[0].amount))
+      } else {
+        setSplitEnabled(false)
+        setSplitMethod1('Cash')
+        setSplitMethod2('Venmo')
+        setSplitAmount1('')
+      }
       setShowId(editRecord.show_id || '')
       setPhotoName(editRecord.photo_url ? 'Existing photo' : '')
       if (editRecord.lot_entries?.length) {
@@ -114,6 +129,18 @@ export default function SalesPage() {
         photo_url = null
       }
 
+      let finalPayment = payment
+      let paymentSplit = null
+      if (splitEnabled) {
+        const amt1 = parseFloat(splitAmount1) || 0
+        const amt2 = finalPrice - amt1
+        finalPayment = `${splitMethod1}/${splitMethod2}`
+        paymentSplit = [
+          { method: splitMethod1, amount: amt1 },
+          { method: splitMethod2, amount: Math.round(amt2 * 100) / 100 },
+        ]
+      }
+
       const record = {
         description: desc.trim(),
         sale_type: saleType === 'Other' ? (customSaleType.trim() || 'Other') : saleType,
@@ -124,7 +151,8 @@ export default function SalesPage() {
         lot_entries: lotData,
         buyer: buyer || null,
         buyer_contact_id: buyerContactId || null,
-        payment,
+        payment: finalPayment,
+        payment_split: paymentSplit,
         show_id: showId || null,
         photo_url,
       }
@@ -149,7 +177,7 @@ export default function SalesPage() {
 
   function resetForm() {
     setSaleType('Singles'); setCustomSaleType(''); setDesc(''); setMarket(''); setPrice(''); setPct(defaultSalePct); setLotEntries([{ market: '', amount: '', pct: '', description: '', showDesc: true }])
-    setCost(''); setBuyer(''); setBuyerContactId(null); setPayment('Cash'); setShowId(''); setPhotoFile(null); setPhotoName('')
+    setCost(''); setBuyer(''); setBuyerContactId(null); setPayment('Cash'); setSplitEnabled(false); setSplitMethod1('Cash'); setSplitMethod2('Venmo'); setSplitAmount1(''); setShowId(''); setPhotoFile(null); setPhotoName('')
   }
 
   return (
@@ -185,7 +213,37 @@ export default function SalesPage() {
         <Input value={customSaleType} onChange={e => setCustomSaleType(e.target.value)} placeholder="Enter sale type..." style={{ marginTop: 8 }} />
       )}
 
-      <PaymentPicker options={['Cash','Venmo','Zelle']} value={payment} onChange={setPayment} />
+      {!splitEnabled ? (
+        <PaymentPicker options={['Cash','Venmo','Zelle']} value={payment} onChange={setPayment} />
+      ) : (
+        <>
+          <PaymentPicker label="Payment method 1" options={['Cash','Venmo','Zelle']} value={splitMethod1} onChange={setSplitMethod1} />
+          <Label>Amount</Label>
+          <Input type="number" value={splitAmount1} onChange={e => setSplitAmount1(e.target.value)} placeholder="0.00" />
+          <PaymentPicker label="Payment method 2" options={['Cash','Venmo','Zelle']} value={splitMethod2} onChange={setSplitMethod2} />
+          {(() => {
+            const total = isLot
+              ? lotEntries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
+              : (parseFloat(price) || 0)
+            const remainder = total - (parseFloat(splitAmount1) || 0)
+            return (
+              <div style={{ fontSize: 13, color: C.text2, padding: '6px 0 2px' }}>
+                Amount: <span style={{ fontWeight: 600, color: remainder >= 0 ? C.green : C.red }}>${Math.max(0, remainder).toFixed(2)}</span>
+                {remainder < 0 && <span style={{ color: C.red, fontSize: 11, marginLeft: 6 }}>(exceeds total)</span>}
+              </div>
+            )
+          })()}
+        </>
+      )}
+      <div
+        onClick={() => setSplitEnabled(!splitEnabled)}
+        style={{ fontSize: 12, color: C.accent2, cursor: 'pointer', marginTop: 6, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}
+      >
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+          <path d="M10 3v14M3 10h14" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+        {splitEnabled ? 'Remove split' : 'Split payment'}
+      </div>
 
       <Label>Card / item name</Label>
       <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder={isLot ? "e.g. Bulk lot from card show" : "e.g. Charizard ex SAR 151"} />
@@ -207,15 +265,31 @@ export default function SalesPage() {
           ? lotEntries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
           : (parseFloat(price) || 0)
         if (saleAmt <= 0) return null
-        const feeRate = payment === 'Cash' ? 0 : payment === 'Venmo' ? 0.09 : 0.06
-        const est = saleAmt * (1 - feeRate)
+
+        const getFeeRate = (method) => method === 'Cash' ? 0 : method === 'Venmo' ? 0.09 : 0.06
+
+        let est, feeLabel
+        if (splitEnabled) {
+          const amt1 = parseFloat(splitAmount1) || 0
+          const amt2 = saleAmt - amt1
+          const fee1 = amt1 * getFeeRate(splitMethod1)
+          const fee2 = amt2 * getFeeRate(splitMethod2)
+          est = saleAmt - fee1 - fee2
+          const totalFee = fee1 + fee2
+          feeLabel = totalFee > 0 ? `($${totalFee.toFixed(2)} blended fee)` : '(no fee)'
+        } else {
+          const feeRate = getFeeRate(payment)
+          est = saleAmt * (1 - feeRate)
+          feeLabel = feeRate > 0 ? `(${Math.round(feeRate * 100)}% fee)` : '(no fee)'
+        }
+
         return (
           <div style={{
             background: C.surface2, borderRadius: 12, padding: '10px 14px', marginTop: 10,
             border: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}>
             <div style={{ fontSize: 11, color: C.text3 }}>
-              Est. earnings {feeRate > 0 ? `(${Math.round(feeRate * 100)}% fee)` : '(no fee)'}
+              Est. earnings {feeLabel}
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, color: C.green }}>
               ${est.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
