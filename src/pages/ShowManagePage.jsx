@@ -68,6 +68,10 @@ export default function ShowManagePage() {
     )
   }
 
+  function handleShowClick(showId) {
+    navigate(`/shows/${showId}`)
+  }
+
   return (
     <div style={{ paddingTop: 12 }}>
       {/* Header */}
@@ -110,15 +114,14 @@ export default function ShowManagePage() {
         <CalendarView
           shows={rows}
           loading={loading}
-          onSelectShow={(id) => { setSelectedId(id); navigate(`/shows/manage?id=${id}`, { replace: true }) }}
+          onSelectShow={(id) => handleShowClick(id)}
           onAddShow={(date) => navigate(`/shows?date=${date}`)}
         />
       ) : (
         <ListView
           rows={rows}
           loading={loading}
-          navigate={navigate}
-          setSelectedId={setSelectedId}
+          onSelectShow={(id) => handleShowClick(id)}
         />
       )}
     </div>
@@ -126,7 +129,8 @@ export default function ShowManagePage() {
 }
 
 // ── LIST VIEW ─────────────────────────────────────────────────
-function ListView({ rows, loading, navigate, setSelectedId }) {
+function ListView({ rows, loading, onSelectShow }) {
+  const navigate = useNavigate()
   return (
     <>
       <GhostButton onClick={() => navigate('/shows')}>+ Add new show</GhostButton>
@@ -138,7 +142,7 @@ function ListView({ rows, loading, navigate, setSelectedId }) {
           return (
           <div
             key={r.id}
-            onClick={() => { setSelectedId(r.id); navigate(`/shows/manage?id=${r.id}`, { replace: true }) }}
+            onClick={() => onSelectShow(r.id)}
             style={{ background: C.surface, borderRadius: 14, padding: '13px 14px', marginBottom: 8, border: `1px solid ${C.border}`, cursor: 'pointer' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
