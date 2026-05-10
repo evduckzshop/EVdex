@@ -511,50 +511,46 @@ function TradeDetail({ trade, onClose, isAdmin, onDelete }) {
           </div>
         </div>
 
-        {/* Their items */}
-        {theirItems.length > 0 && (
+        {/* Customer items + settlement if customer paid */}
+        {(theirItems.length > 0 || (trade.payment_method && trade.delta > 0)) && (
           <>
-            <div style={{ fontSize: 9, fontWeight: 600, color: C.red, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>Customer items</div>
+            <div style={{ fontSize: 9, fontWeight: 600, color: C.red, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>Customer</div>
             <div style={{ background: C.surface, borderRadius: 10, padding: '2px 12px', marginBottom: 10, border: `1px solid ${C.border}` }}>
               {theirItems.map((item, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < theirItems.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: (i < theirItems.length - 1 || (trade.payment_method && trade.delta > 0)) ? `1px solid ${C.border}` : 'none' }}>
                   <div style={{ fontSize: 12, color: C.text }}>{item.description || `Item ${i + 1}`}</div>
                   <div style={{ fontSize: 12, color: C.text3 }}>${Number(item.market_value).toFixed(0)} @ {item.trade_pct}% = <span style={{ color: C.amber, fontWeight: 600 }}>${Number(item.trade_value).toFixed(0)}</span></div>
                 </div>
               ))}
+              {trade.payment_method && trade.delta > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0' }}>
+                  <div style={{ fontSize: 12, color: C.green }}>Paid via {trade.payment_method}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.green }}>+${Number(trade.amount_paid).toFixed(2)}</div>
+                </div>
+              )}
             </div>
           </>
         )}
 
-        {/* Your items */}
-        {yourItems.length > 0 && (
+        {/* Your items + settlement if you paid */}
+        {(yourItems.length > 0 || (trade.payment_method && trade.delta < 0)) && (
           <>
-            <div style={{ fontSize: 9, fontWeight: 600, color: C.green, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>{trade.profiles?.full_name?.split(' ')[0] || 'Staff'} items</div>
+            <div style={{ fontSize: 9, fontWeight: 600, color: C.green, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>{trade.profiles?.full_name?.split(' ')[0] || 'Staff'}</div>
             <div style={{ background: C.surface, borderRadius: 10, padding: '2px 12px', marginBottom: 10, border: `1px solid ${C.border}` }}>
               {yourItems.map((item, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < yourItems.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: (i < yourItems.length - 1 || (trade.payment_method && trade.delta < 0)) ? `1px solid ${C.border}` : 'none' }}>
                   <div style={{ fontSize: 12, color: C.text }}>{item.description || `Item ${i + 1}`}</div>
                   <div style={{ fontSize: 12, fontWeight: 600, color: C.green }}>${Number(item.market_value).toFixed(0)}</div>
                 </div>
               ))}
+              {trade.payment_method && trade.delta < 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0' }}>
+                  <div style={{ fontSize: 12, color: C.red }}>Paid via {trade.payment_method}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.red }}>-${Number(trade.amount_paid).toFixed(2)}</div>
+                </div>
+              )}
             </div>
           </>
-        )}
-
-        {/* Settlement info */}
-        {trade.payment_method && (
-          <div style={{
-            background: C.surface, borderRadius: 10, padding: '8px 12px', marginBottom: 10,
-            border: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          }}>
-            <div>
-              <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Difference paid via</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{trade.payment_method}</div>
-            </div>
-            {trade.amount_paid != null && (
-              <div style={{ fontSize: 16, fontWeight: 700, color: C.accent2 }}>${Number(trade.amount_paid).toFixed(2)}</div>
-            )}
-          </div>
         )}
 
         {/* Meta */}
