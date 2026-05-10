@@ -41,16 +41,25 @@ export function CashFlowPage() {
       try {
         const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
         const ts = weekAgo.toISOString()
-        const [s, b, e] = await Promise.all([
+        const [s, b, e, t] = await Promise.all([
           supabase.from('sales').select('sale_price').gte('created_at', ts),
           supabase.from('buys').select('amount_paid').gte('created_at', ts),
           supabase.from('expenses').select('amount').gte('created_at', ts),
+          supabase.from('trades').select('delta,amount_paid').gte('created_at', ts),
         ])
         if (s.error) throw s.error
         if (b.error) throw b.error
         if (e.error) throw e.error
-        const sales = (s.data||[]).reduce((sum,r) => sum + Number(r.sale_price), 0)
-        const buys = (b.data||[]).reduce((sum,r) => sum + Number(r.amount_paid), 0)
+        if (t.error) throw t.error
+        let sales = (s.data||[]).reduce((sum,r) => sum + Number(r.sale_price), 0)
+        let buys = (b.data||[]).reduce((sum,r) => sum + Number(r.amount_paid), 0)
+        ;(t.data||[]).forEach(tr => {
+          const paid = Number(tr.amount_paid) || 0
+          if (paid > 0) {
+            if (tr.delta > 0) sales += paid
+            else if (tr.delta < 0) buys += paid
+          }
+        })
         const expenses = (e.data||[]).reduce((sum,r) => sum + Number(r.amount), 0)
         setData({ sales, buys, expenses })
       } catch (e) {
@@ -130,19 +139,22 @@ export function PLPage() {
       let buysQ = supabase.from('buys').select('amount_paid,show_id')
       let expQ = supabase.from('expenses').select('amount,show_id')
       let showsQ = supabase.from('shows').select('id,name,table_fee')
+      let tradesQ = supabase.from('trades').select('delta,amount_paid,show_id')
 
       if (ts) {
         salesQ = salesQ.gte('created_at', ts)
         buysQ = buysQ.gte('created_at', ts)
         expQ = expQ.gte('created_at', ts)
+        tradesQ = tradesQ.gte('created_at', ts)
       }
 
-      const [s, b, e, sh] = await Promise.all([salesQ, buysQ, expQ, showsQ])
+      const [s, b, e, sh, t] = await Promise.all([salesQ, buysQ, expQ, showsQ, tradesQ])
       if (s.error) throw s.error
       if (b.error) throw b.error
       if (e.error) throw e.error
       if (sh.error) throw sh.error
-      setData({ sales: s.data || [], buys: b.data || [], expenses: e.data || [], shows: sh.data || [] })
+      if (t.error) throw t.error
+      setData({ sales: s.data || [], buys: b.data || [], expenses: e.data || [], shows: sh.data || [], trades: t.data || [] })
     } catch (e) {
       setError(e.message || 'Failed to load P&L data')
       console.error('PLPage load error:', e)
@@ -156,9 +168,17 @@ export function PLPage() {
   const filteredBuys = showFilter === 'overall' ? data.buys : data.buys.filter(r => r.show_id === showFilter)
   const filteredExp = showFilter === 'overall' ? data.expenses : data.expenses.filter(r => r.show_id === showFilter)
   const filteredFees = showFilter === 'overall' ? data.shows : data.shows.filter(r => r.id === showFilter)
+  const filteredTrades = showFilter === 'overall' ? (data.trades || []) : (data.trades || []).filter(r => r.show_id === showFilter)
 
-  const rev = filteredSales.reduce((s, r) => s + Number(r.sale_price), 0)
-  const cogs = filteredBuys.reduce((s, r) => s + Number(r.amount_paid), 0)
+  let rev = filteredSales.reduce((s, r) => s + Number(r.sale_price), 0)
+  let cogs = filteredBuys.reduce((s, r) => s + Number(r.amount_paid), 0)
+  filteredTrades.forEach(tr => {
+    const paid = Number(tr.amount_paid) || 0
+    if (paid > 0) {
+      if (tr.delta > 0) rev += paid
+      else if (tr.delta < 0) cogs += paid
+    }
+  })
   const fees = filteredFees.reduce((s, r) => s + Number(r.table_fee || 0), 0)
   const exp = filteredExp.reduce((s, r) => s + Number(r.amount), 0)
   const gross = rev - cogs
@@ -235,15 +255,17 @@ export function ReportingPage() {
       try {
         const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30)
         const ts = monthAgo.toISOString()
-        const [s, b, e] = await Promise.all([
+        const [s, b, e, t] = await Promise.all([
           supabase.from('sales').select('sale_price,sale_type,pct_of_market').gte('created_at', ts),
           supabase.from('buys').select('amount_paid,buy_type,pct_of_market').gte('created_at', ts),
           supabase.from('expenses').select('amount,category').gte('created_at', ts),
+          supabase.from('trades').select('delta,amount_paid').gte('created_at', ts),
         ])
         if (s.error) throw s.error
         if (b.error) throw b.error
         if (e.error) throw e.error
-        setData({ sales: s.data||[], buys: b.data||[], expenses: e.data||[] })
+        if (t.error) throw t.error
+        setData({ sales: s.data||[], buys: b.data||[], expenses: e.data||[], trades: t.data||[] })
       } catch (e) {
         setError(e.message || 'Failed to load reporting data')
         console.error('ReportingPage load error:', e)
@@ -257,8 +279,15 @@ export function ReportingPage() {
   if (loading) return <div style={{ paddingTop: 24, textAlign: 'center', color: C.text3 }}>Loading…</div>
   if (error) return <div style={{ paddingTop: 24 }}><div style={{ background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.2)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.red }}>{error}</div></div>
 
-  const totalSales = data.sales.reduce((s,r) => s+Number(r.sale_price), 0)
-  const totalBuys = data.buys.reduce((s,r) => s+Number(r.amount_paid), 0)
+  let totalSales = data.sales.reduce((s,r) => s+Number(r.sale_price), 0)
+  let totalBuys = data.buys.reduce((s,r) => s+Number(r.amount_paid), 0)
+  ;(data.trades||[]).forEach(tr => {
+    const paid = Number(tr.amount_paid) || 0
+    if (paid > 0) {
+      if (tr.delta > 0) totalSales += paid
+      else if (tr.delta < 0) totalBuys += paid
+    }
+  })
   const totalExp = data.expenses.reduce((s,r) => s+Number(r.amount), 0)
 
   // By sale type

@@ -9,6 +9,7 @@ export default function ShowDetailPage() {
   const [show, setShow] = useState(null)
   const [sales, setSales] = useState([])
   const [buys, setBuys] = useState([])
+  const [trades, setTrades] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('sales')
   const [paymentFilter, setPaymentFilter] = useState('All')
@@ -16,14 +17,16 @@ export default function ShowDetailPage() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const [showRes, salesRes, buysRes] = await Promise.all([
+      const [showRes, salesRes, buysRes, tradesRes] = await Promise.all([
         supabase.from('shows').select('*').eq('id', id).single(),
         supabase.from('sales').select('*').eq('show_id', id).order('created_at', { ascending: false }),
         supabase.from('buys').select('*').eq('show_id', id).order('created_at', { ascending: false }),
+        supabase.from('trades').select('*,profiles!created_by(full_name)').eq('show_id', id).order('created_at', { ascending: false }),
       ])
       if (showRes.data) setShow(showRes.data)
       setSales(salesRes.data || [])
       setBuys(buysRes.data || [])
+      setTrades(tradesRes.data || [])
       setLoading(false)
     }
     load()
@@ -46,12 +49,19 @@ export default function ShowDetailPage() {
     )
   }
 
-  // Stats
-  const totalRevenue = sales.reduce((s, r) => s + Number(r.sale_price || 0), 0)
-  const totalSpent = buys.reduce((s, r) => s + Number(r.amount_paid || 0), 0)
+  // Stats — include trade settlement cash in sales/buys
+  let totalRevenue = sales.reduce((s, r) => s + Number(r.sale_price || 0), 0)
+  let totalSpent = buys.reduce((s, r) => s + Number(r.amount_paid || 0), 0)
+  trades.forEach(tr => {
+    const paid = Number(tr.amount_paid) || 0
+    if (paid > 0) {
+      if (tr.delta > 0) totalRevenue += paid
+      else if (tr.delta < 0) totalSpent += paid
+    }
+  })
   const tableFee = Number(show.table_fee || 0)
   const netProfit = totalRevenue - totalSpent - tableFee
-  const totalTransactions = sales.length + buys.length
+  const totalTransactions = sales.length + buys.length + trades.length
 
   // Payment breakdown
   const paymentBreakdown = {}
@@ -197,6 +207,7 @@ export default function ShowDetailPage() {
         {[
           { key: 'sales', label: `Sales (${filteredSales.length})` },
           { key: 'buys', label: `Buys (${filteredBuys.length})` },
+          { key: 'trades', label: `Trades (${trades.length})` },
         ].map(t => (
           <button
             key={t.key}
@@ -263,6 +274,24 @@ export default function ShowDetailPage() {
                 amountColor="#F87171"
                 payment={r.payment}
                 meta={`${r.seller || 'Unknown'} · ${new Date(r.created_at).toLocaleDateString()}`}
+              />
+            </div>
+          ))
+        )
+      )}
+
+      {tab === 'trades' && (
+        trades.length === 0 ? (
+          <div style={{ textAlign: 'center', color: C.text3, padding: 24, fontSize: 13 }}>No trades</div>
+        ) : (
+          trades.map(t => (
+            <div key={t.id} style={{ cursor: 'default' }}>
+              <TransactionCard
+                description={t.description || `Trade · ${(t.their_items?.length || 0) + (t.your_items?.length || 0)} items`}
+                amount={t.delta > 0 ? `+$${Number(t.amount_paid || 0).toFixed(2)}` : t.delta < 0 ? `-$${Number(t.amount_paid || 0).toFixed(2)}` : 'Even'}
+                amountColor={t.delta > 0 ? C.green : t.delta < 0 ? '#F87171' : C.accent2}
+                payment={t.payment_method || 'Trade only'}
+                meta={`${t.profiles?.full_name || 'Unknown'} · ${new Date(t.created_at).toLocaleDateString()} · Value gained: $${(Number(t.their_total_market) - Number(t.their_total_trade)).toFixed(0)}`}
               />
             </div>
           ))

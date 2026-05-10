@@ -30,14 +30,23 @@ export default function ShowComparePage() {
     try {
       const result = {}
       for (const id of selectedIds) {
-        const [s, b, e] = await Promise.all([
+        const [s, b, e, t] = await Promise.all([
           supabase.from('sales').select('sale_price').eq('show_id', id),
           supabase.from('buys').select('amount_paid').eq('show_id', id),
           supabase.from('expenses').select('amount').eq('show_id', id),
+          supabase.from('trades').select('delta,amount_paid').eq('show_id', id),
         ])
         const show = shows.find(sh => sh.id === id)
-        const revenue = (s.data || []).reduce((sum, r) => sum + Number(r.sale_price), 0)
-        const cogs = (b.data || []).reduce((sum, r) => sum + Number(r.amount_paid), 0)
+        let revenue = (s.data || []).reduce((sum, r) => sum + Number(r.sale_price), 0)
+        let cogs = (b.data || []).reduce((sum, r) => sum + Number(r.amount_paid), 0)
+        // Trade settlement cash flows
+        ;(t.data || []).forEach(tr => {
+          const paid = Number(tr.amount_paid) || 0
+          if (paid > 0) {
+            if (tr.delta > 0) revenue += paid
+            else if (tr.delta < 0) cogs += paid
+          }
+        })
         const expenses = (e.data || []).reduce((sum, r) => sum + Number(r.amount), 0)
         const tableFee = Number(show?.table_fee) || 0
         const net = revenue - cogs - expenses - tableFee
@@ -47,8 +56,9 @@ export default function ShowComparePage() {
           revenue, cogs, expenses, tableFee, net,
           salesCount: s.data?.length || 0,
           buysCount: b.data?.length || 0,
+          tradesCount: t.data?.length || 0,
           avgSale,
-          txCount: (s.data?.length || 0) + (b.data?.length || 0),
+          txCount: (s.data?.length || 0) + (b.data?.length || 0) + (t.data?.length || 0),
         }
       }
       setData(result)

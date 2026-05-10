@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useSales, useBuys } from '../hooks/useData'
+import { useSales, useBuys, useTrades } from '../hooks/useData'
 import { C, Input, Select, ChipGroup, RecordCard } from '../components/ui/FormComponents'
 
-const TYPES = ['All', 'Sales', 'Buys']
+const TYPES = ['All', 'Sales', 'Buys', 'Trades']
 
 export default function TransactionsPage() {
   const { rows: sales, fetch: fetchSales, loading: loadingSales } = useSales()
   const { rows: buys, fetch: fetchBuys, loading: loadingBuys } = useBuys()
+  const { rows: trades, fetch: fetchTrades, loading: loadingTrades } = useTrades()
   const navigate = useNavigate()
 
   const [type, setType] = useState('All')
@@ -17,29 +18,45 @@ export default function TransactionsPage() {
   const [dateTo, setDateTo] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
-  useEffect(() => { fetchSales(); fetchBuys() }, [])
+  useEffect(() => { fetchSales(); fetchBuys(); fetchTrades() }, [])
 
-  const loading = loadingSales || loadingBuys
+  const loading = loadingSales || loadingBuys || loadingTrades
 
   // Merge and tag
   const all = [
     ...sales.map(r => ({ ...r, _type: 'sale', _amount: Number(r.sale_price), _date: r.created_at })),
     ...buys.map(r => ({ ...r, _type: 'buy', _amount: Number(r.amount_paid), _date: r.created_at })),
+    ...trades.map(r => ({
+      ...r, _type: 'trade',
+      _amount: Number(r.amount_paid) || 0,
+      _date: r.created_at,
+      _tradeLabel: r.description || `Trade · ${(r.their_items?.length || 0) + (r.your_items?.length || 0)} items`,
+    })),
   ].sort((a, b) => new Date(b._date) - new Date(a._date))
 
   // Filter
   const filtered = all.filter(r => {
     if (type === 'Sales' && r._type !== 'sale') return false
     if (type === 'Buys' && r._type !== 'buy') return false
-    if (search && !(r.description || '').toLowerCase().includes(search.toLowerCase())) return false
-    if (payment && r.payment !== payment) return false
+    if (type === 'Trades' && r._type !== 'trade') return false
+    if (search && !(r.description || r._tradeLabel || '').toLowerCase().includes(search.toLowerCase())) return false
+    if (payment && r._type !== 'trade' && r.payment !== payment) return false
+    if (payment && r._type === 'trade' && r.payment_method !== payment) return false
     if (dateFrom && r._date < new Date(dateFrom + 'T00:00:00').toISOString()) return false
     if (dateTo && r._date > new Date(dateTo + 'T23:59:59').toISOString()) return false
     return true
   })
 
-  const totalSales = filtered.filter(r => r._type === 'sale').reduce((s, r) => s + r._amount, 0)
-  const totalBuys = filtered.filter(r => r._type === 'buy').reduce((s, r) => s + r._amount, 0)
+  let totalSales = filtered.filter(r => r._type === 'sale').reduce((s, r) => s + r._amount, 0)
+  let totalBuys = filtered.filter(r => r._type === 'buy').reduce((s, r) => s + r._amount, 0)
+  // Include trade settlement cash in totals
+  filtered.filter(r => r._type === 'trade').forEach(r => {
+    const paid = Number(r.amount_paid) || 0
+    if (paid > 0) {
+      if (r.delta > 0) totalSales += paid
+      else if (r.delta < 0) totalBuys += paid
+    }
+  })
 
   return (
     <div style={{ paddingTop: 12 }}>
@@ -117,12 +134,20 @@ export default function TransactionsPage() {
         <div style={{ textAlign: 'center', color: C.text3, padding: 24, fontSize: 13 }}>No transactions found.</div>
       ) : (
         filtered.map(r => (
-          <div key={r.id + r._type} onClick={() => navigate(r._type === 'sale' ? `/sales?edit=${r.id}` : `/buys?edit=${r.id}`)} style={{ cursor: 'pointer' }}>
+          <div key={r.id + r._type} onClick={() => {
+            if (r._type === 'sale') navigate(`/sales?edit=${r.id}`)
+            else if (r._type === 'buy') navigate(`/buys?edit=${r.id}`)
+            else navigate('/trade')
+          }} style={{ cursor: 'pointer' }}>
             <RecordCard
-              item={r}
-              amtColor={r._type === 'sale' ? C.green : C.red}
-              amt={`${r._type === 'sale' ? '+' : '-'}$${r._amount.toFixed(0)}`}
-              meta={`${r._type === 'sale' ? (r.buyer || 'Unknown') : (r.source || 'Unknown')} · ${r.pct_of_market ? r.pct_of_market + '% of mkt · ' : ''}${new Date(r._date).toLocaleDateString()}`}
+              item={{ ...r, description: r._type === 'trade' ? r._tradeLabel : r.description }}
+              amtColor={r._type === 'sale' ? C.green : r._type === 'buy' ? C.red : C.accent2}
+              amt={r._type === 'trade'
+                ? (r.delta > 0 ? `+$${r._amount.toFixed(0)}` : r.delta < 0 ? `-$${r._amount.toFixed(0)}` : 'Even')
+                : `${r._type === 'sale' ? '+' : '-'}$${r._amount.toFixed(0)}`}
+              meta={r._type === 'trade'
+                ? `Trade · Value gained: $${(Number(r.their_total_market) - Number(r.their_total_trade)).toFixed(0)} · ${new Date(r._date).toLocaleDateString()}`
+                : `${r._type === 'sale' ? (r.buyer || 'Unknown') : (r.source || 'Unknown')} · ${r.pct_of_market ? r.pct_of_market + '% of mkt · ' : ''}${new Date(r._date).toLocaleDateString()}`}
             />
           </div>
         ))

@@ -67,49 +67,53 @@ function ActivityDetail({ item, onClose, isAdmin, onDelete, navigate }) {
   const [photoExpanded, setPhotoExpanded] = useState(false)
   const isSale = item.type === 'sale'
   const isBuy = item.type === 'buy'
+  const isTrade = item.type === 'trade'
   const isExpense = item.type === 'expense'
-  const color = isSale ? C.green : isBuy ? C.red : C.amber
-  const typeLabel = isSale ? 'Sale' : isBuy ? 'Buy' : 'Expense'
+  const color = isSale ? C.green : isBuy ? C.red : isTrade ? C.accent2 : C.amber
+  const typeLabel = isSale ? 'Sale' : isBuy ? 'Buy' : isTrade ? 'Trade' : 'Expense'
 
+  // Build detail rows for non-trade types
   const rows = []
-  if (isSale) {
-    rows.push({ label: 'Item', value: item.description })
-    rows.push({ label: 'Sale type', value: item.sale_type || '—' })
-    rows.push({ label: 'Sale price', value: `$${Number(item.sale_price).toFixed(2)}`, color: C.green })
-    if (item.market_value) rows.push({ label: 'Market value', value: `$${Number(item.market_value).toFixed(2)}` })
-    if (item.pct_of_market) rows.push({ label: '% of market', value: `${item.pct_of_market}%` })
-    if (item.cost_basis) rows.push({ label: 'Cost basis', value: `$${Number(item.cost_basis).toFixed(2)}` })
-    if (item.cost_basis && item.sale_price) {
-      const profit = Number(item.sale_price) - Number(item.cost_basis)
-      rows.push({ label: 'Profit', value: `${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}`, color: profit >= 0 ? C.green : C.red })
+  if (!isTrade) {
+    if (isSale) {
+      rows.push({ label: 'Item', value: item.description })
+      rows.push({ label: 'Sale type', value: item.sale_type || '—' })
+      rows.push({ label: 'Sale price', value: `$${Number(item.sale_price).toFixed(2)}`, color: C.green })
+      if (item.market_value) rows.push({ label: 'Market value', value: `$${Number(item.market_value).toFixed(2)}` })
+      if (item.pct_of_market) rows.push({ label: '% of market', value: `${item.pct_of_market}%` })
+      if (item.cost_basis) rows.push({ label: 'Cost basis', value: `$${Number(item.cost_basis).toFixed(2)}` })
+      if (item.cost_basis && item.sale_price) {
+        const profit = Number(item.sale_price) - Number(item.cost_basis)
+        rows.push({ label: 'Profit', value: `${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}`, color: profit >= 0 ? C.green : C.red })
+      }
+      rows.push({ label: 'Buyer', value: item.buyer || '—' })
+      rows.push({ label: 'Payment', value: item.payment || '—' })
+    } else if (isBuy) {
+      rows.push({ label: 'Item', value: item.description })
+      rows.push({ label: 'Buy type', value: item.buy_type || '—' })
+      rows.push({ label: 'Amount paid', value: `$${Number(item.amount_paid).toFixed(2)}`, color: C.red })
+      if (item.market_value) rows.push({ label: 'Market value', value: `$${Number(item.market_value).toFixed(2)}` })
+      if (item.pct_of_market) rows.push({ label: '% of market', value: `${item.pct_of_market}%` })
+      if (item.qty) rows.push({ label: 'Qty', value: item.qty })
+      if (item.condition) rows.push({ label: 'Condition', value: item.condition })
+      rows.push({ label: 'Source', value: item.source || '—' })
+      rows.push({ label: 'Payment', value: item.payment || '—' })
+      if (item.notes) rows.push({ label: 'Notes', value: item.notes })
+    } else {
+      rows.push({ label: 'Description', value: item.description })
+      rows.push({ label: 'Category', value: item.category || '—' })
+      rows.push({ label: 'Amount', value: `$${Number(item.amount).toFixed(2)}`, color: C.amber })
+      if (item.payment) rows.push({ label: 'Payment', value: item.payment })
     }
-    rows.push({ label: 'Buyer', value: item.buyer || '—' })
-    rows.push({ label: 'Payment', value: item.payment || '—' })
-  } else if (isBuy) {
-    rows.push({ label: 'Item', value: item.description })
-    rows.push({ label: 'Buy type', value: item.buy_type || '—' })
-    rows.push({ label: 'Amount paid', value: `$${Number(item.amount_paid).toFixed(2)}`, color: C.red })
-    if (item.market_value) rows.push({ label: 'Market value', value: `$${Number(item.market_value).toFixed(2)}` })
-    if (item.pct_of_market) rows.push({ label: '% of market', value: `${item.pct_of_market}%` })
-    if (item.qty) rows.push({ label: 'Qty', value: item.qty })
-    if (item.condition) rows.push({ label: 'Condition', value: item.condition })
-    rows.push({ label: 'Source', value: item.source || '—' })
-    rows.push({ label: 'Payment', value: item.payment || '—' })
-    if (item.notes) rows.push({ label: 'Notes', value: item.notes })
-  } else {
-    rows.push({ label: 'Description', value: item.description })
-    rows.push({ label: 'Category', value: item.category || '—' })
-    rows.push({ label: 'Amount', value: `$${Number(item.amount).toFixed(2)}`, color: C.amber })
-    if (item.payment) rows.push({ label: 'Payment', value: item.payment })
+    rows.push({ label: 'Logged by', value: item.who || '—' })
+    rows.push({ label: 'Time', value: new Date(item.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) })
   }
-  rows.push({ label: 'Logged by', value: item.who || '—' })
-  rows.push({ label: 'Time', value: new Date(item.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) })
 
   async function handleDelete() {
     if (!confirmDelete) { setConfirmDelete(true); return }
     setDeleting(true)
     try {
-      const table = isSale ? 'sales' : isBuy ? 'buys' : 'expenses'
+      const table = isSale ? 'sales' : isBuy ? 'buys' : isTrade ? 'trades' : 'expenses'
       const { error } = await supabase.from(table).delete().eq('id', item.id)
       if (error) throw error
       await logActivity({
@@ -128,6 +132,11 @@ function ActivityDetail({ item, onClose, isAdmin, onDelete, navigate }) {
       setConfirmDelete(false)
     }
   }
+
+  // Trade detail variables
+  const theirItems = item.their_items || []
+  const yourItems = item.your_items || []
+  const tradeValueGained = isTrade ? Number(item.their_total_market) - Number(item.their_total_trade) : 0
 
   return (
     <>
@@ -175,29 +184,118 @@ function ActivityDetail({ item, onClose, isAdmin, onDelete, navigate }) {
           </>
         )}
 
-        {/* Amount hero */}
-        <div style={{ background: C.surface2, borderRadius: 14, padding: 14, marginBottom: 12, textAlign: 'center', border: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 10, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>
-            {isSale ? 'Sale price' : isBuy ? 'Amount paid' : 'Expense amount'}
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 700, color, letterSpacing: -1 }}>
-            {isSale ? '+' : '-'}${Number(item.amount).toFixed(2)}
-          </div>
-        </div>
-
-        {/* Detail rows */}
-        <div style={{ background: C.surface, borderRadius: 14, padding: '4px 14px', border: `1px solid ${C.border}` }}>
-          {rows.map((r, i) => (
-            <div key={r.label} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '10px 0',
-              borderBottom: i < rows.length - 1 ? `1px solid ${C.border}` : 'none',
+        {isTrade ? (
+          <>
+            {/* Trade: Delta hero */}
+            <div style={{
+              background: item.delta > 0 ? 'rgba(16,185,129,.08)' : item.delta < 0 ? 'rgba(248,113,113,.08)' : 'rgba(16,185,129,.08)',
+              borderRadius: 14, padding: 14, marginBottom: 12, textAlign: 'center',
+              border: `1px solid ${item.delta > 0 ? 'rgba(16,185,129,.2)' : item.delta < 0 ? 'rgba(248,113,113,.2)' : 'rgba(16,185,129,.2)'}`,
             }}>
-              <div style={{ fontSize: 13, color: C.text3 }}>{r.label}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: r.color || C.text, maxWidth: '60%', textAlign: 'right', wordBreak: 'break-word' }}>{r.value}</div>
+              <div style={{ fontSize: 10, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>
+                {item.delta > 0 ? 'Customer owed' : item.delta < 0 ? 'You owed' : 'Even trade'}
+              </div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: Number(item.delta) >= 0 ? C.green : C.red, letterSpacing: -1 }}>
+                ${Math.abs(Number(item.delta)).toFixed(2)}
+              </div>
             </div>
-          ))}
-        </div>
+
+            {/* Trade: Summary grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 12 }}>
+              <div style={{ background: C.surface, borderRadius: 8, padding: 8, textAlign: 'center' }}>
+                <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', marginBottom: 2 }}>You gave</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.red }}>${Number(item.your_total).toFixed(0)}</div>
+              </div>
+              <div style={{ background: C.surface, borderRadius: 8, padding: 8, textAlign: 'center' }}>
+                <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', marginBottom: 2 }}>You received</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.green }}>${Number(item.their_total_trade).toFixed(0)}</div>
+              </div>
+              <div style={{ background: C.surface, borderRadius: 8, padding: 8, textAlign: 'center' }}>
+                <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', marginBottom: 2 }}>Value gained</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.green }}>${tradeValueGained.toFixed(0)}</div>
+              </div>
+            </div>
+
+            {/* Trade: Customer items */}
+            {theirItems.length > 0 && (
+              <>
+                <div style={{ fontSize: 9, fontWeight: 600, color: C.red, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>Customer items</div>
+                <div style={{ background: C.surface, borderRadius: 10, padding: '2px 12px', marginBottom: 10, border: `1px solid ${C.border}` }}>
+                  {theirItems.map((ti, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < theirItems.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+                      <div style={{ fontSize: 12, color: C.text }}>{ti.description || `Item ${i + 1}`}</div>
+                      <div style={{ fontSize: 12, color: C.text3 }}>${Number(ti.market_value).toFixed(0)} @ {ti.trade_pct}% = <span style={{ color: C.amber, fontWeight: 600 }}>${Number(ti.trade_value).toFixed(0)}</span></div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Trade: Your items */}
+            {yourItems.length > 0 && (
+              <>
+                <div style={{ fontSize: 9, fontWeight: 600, color: C.green, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>Your items</div>
+                <div style={{ background: C.surface, borderRadius: 10, padding: '2px 12px', marginBottom: 10, border: `1px solid ${C.border}` }}>
+                  {yourItems.map((yi, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < yourItems.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+                      <div style={{ fontSize: 12, color: C.text }}>{yi.description || `Item ${i + 1}`}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.green }}>${Number(yi.market_value).toFixed(0)}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Trade: Settlement info */}
+            {item.payment_method && (
+              <div style={{
+                background: C.surface, borderRadius: 10, padding: '8px 12px', marginBottom: 10,
+                border: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                <div>
+                  <div style={{ fontSize: 8, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Difference paid via</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{item.payment_method}</div>
+                </div>
+                {item.amount_paid != null && (
+                  <div style={{ fontSize: 16, fontWeight: 700, color: C.accent2 }}>${Number(item.amount_paid).toFixed(2)}</div>
+                )}
+              </div>
+            )}
+
+            {/* Trade: Meta */}
+            <div style={{ fontSize: 10, color: C.text3, marginBottom: 12 }}>
+              {item.description && <div style={{ marginBottom: 2 }}>{item.description}</div>}
+              {new Date(item.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {item.who && ` · ${item.who}`}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Amount hero */}
+            <div style={{ background: C.surface2, borderRadius: 14, padding: 14, marginBottom: 12, textAlign: 'center', border: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 10, color: C.text3, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>
+                {isSale ? 'Sale price' : isBuy ? 'Amount paid' : 'Expense amount'}
+              </div>
+              <div style={{ fontSize: 28, fontWeight: 700, color, letterSpacing: -1 }}>
+                {isSale ? '+' : '-'}${Number(item.amount).toFixed(2)}
+              </div>
+            </div>
+
+            {/* Detail rows */}
+            <div style={{ background: C.surface, borderRadius: 14, padding: '4px 14px', border: `1px solid ${C.border}` }}>
+              {rows.map((r, i) => (
+                <div key={r.label} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '10px 0',
+                  borderBottom: i < rows.length - 1 ? `1px solid ${C.border}` : 'none',
+                }}>
+                  <div style={{ fontSize: 13, color: C.text3 }}>{r.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: r.color || C.text, maxWidth: '60%', textAlign: 'right', wordBreak: 'break-word' }}>{r.value}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Edit button */}
         {(isSale || isBuy) && (
@@ -319,12 +417,21 @@ export default function HomePage() {
     const show = shows.find(s => s.id === id)
     if (!show) return
     try {
-      const [s, b] = await Promise.all([
+      const [s, b, t] = await Promise.all([
         supabase.from('sales').select('sale_price').eq('show_id', id),
         supabase.from('buys').select('amount_paid').eq('show_id', id),
+        supabase.from('trades').select('delta,amount_paid').eq('show_id', id),
       ])
-      const salesTotal = (s.data || []).reduce((sum, r) => sum + Number(r.sale_price), 0)
-      const buysTotal = (b.data || []).reduce((sum, r) => sum + Number(r.amount_paid), 0)
+      let salesTotal = (s.data || []).reduce((sum, r) => sum + Number(r.sale_price), 0)
+      let buysTotal = (b.data || []).reduce((sum, r) => sum + Number(r.amount_paid), 0)
+      // Trade settlement cash: customer pays you = sale, you pay customer = buy
+      ;(t.data || []).forEach(tr => {
+        const paid = Number(tr.amount_paid) || 0
+        if (paid > 0) {
+          if (tr.delta > 0) salesTotal += paid
+          else if (tr.delta < 0) buysTotal += paid
+        }
+      })
       setLiveShow({ sales: salesTotal, buys: buysTotal, fee: Number(show.table_fee) || 0 })
     } catch (e) {
       console.error('Failed to load show stats:', e)

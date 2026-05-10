@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(powershell.exe:*)",
-      "Bash(\"/c/Program Files/nodejs/npm\" install framer-motion --prefix \"C:/Users/Matthew Tran/Downloads/evdex\")"
+      "Bash(\"/c/Program Files/nodejs/npm\" install framer-motion --prefix \"C:/Users/Matthew Tran/Downloads/evdex\")",
+      "Bash(npx vite:*)"
     ]
   }
 }

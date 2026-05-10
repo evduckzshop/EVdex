@@ -180,21 +180,31 @@ export async function fetchShowPLReport(start, end) {
 
   const showIds = shows.map(s => s.id)
 
-  // Fetch all sales, buys, expenses linked to these shows
-  const [salesRes, buysRes, expRes] = await Promise.all([
+  // Fetch all sales, buys, expenses, trades linked to these shows
+  const [salesRes, buysRes, expRes, tradesRes] = await Promise.all([
     supabase.from('sales').select('sale_price,show_id').in('show_id', showIds).range(0, 9999),
     supabase.from('buys').select('amount_paid,show_id').in('show_id', showIds).range(0, 9999),
     supabase.from('expenses').select('amount,show_id').in('show_id', showIds).range(0, 9999),
+    supabase.from('trades').select('delta,amount_paid,show_id').in('show_id', showIds).range(0, 9999),
   ])
 
   // Group by show
   const salesByShow = groupBy(salesRes.data || [], 'show_id')
   const buysByShow = groupBy(buysRes.data || [], 'show_id')
   const expByShow = groupBy(expRes.data || [], 'show_id')
+  const tradesByShow = groupBy(tradesRes.data || [], 'show_id')
 
   return shows.map(s => {
-    const rev = (salesByShow[s.id] || []).reduce((sum, r) => sum + Number(r.sale_price), 0)
-    const cogs = (buysByShow[s.id] || []).reduce((sum, r) => sum + Number(r.amount_paid), 0)
+    let rev = (salesByShow[s.id] || []).reduce((sum, r) => sum + Number(r.sale_price), 0)
+    let cogs = (buysByShow[s.id] || []).reduce((sum, r) => sum + Number(r.amount_paid), 0)
+    // Include trade settlement cash
+    ;(tradesByShow[s.id] || []).forEach(tr => {
+      const paid = Number(tr.amount_paid) || 0
+      if (paid > 0) {
+        if (tr.delta > 0) rev += paid
+        else if (tr.delta < 0) cogs += paid
+      }
+    })
     const exp = (expByShow[s.id] || []).reduce((sum, r) => sum + Number(r.amount), 0)
     const fee = Number(s.table_fee) || 0
     const net = rev - cogs - exp - fee
