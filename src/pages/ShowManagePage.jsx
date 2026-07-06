@@ -52,8 +52,7 @@ export default function ShowManagePage() {
         onBack={() => { setSelectedId(null); navigate('/shows/manage', { replace: true }) }}
         onUpdate={async (id, updates) => {
           await update(id, updates)
-          setMsg({ text: 'Show updated!', type: 'success' })
-          setTimeout(() => setMsg({ text: '', type: '' }), 3000)
+          navigate(-1)
         }}
         onDelete={async (id) => {
           await remove(id)
