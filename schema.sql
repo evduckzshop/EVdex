@@ -1,6 +1,6 @@
 -- ============================================================
--- EVdex — Complete Supabase SQL Schema
--- Run this in the Supabase SQL editor in order
+-- EVdex — Base Supabase SQL Schema
+-- Run this first, then supabase/migrations/001 → 004 in order.
 -- ============================================================
 
 -- ── 1. PROFILES ─────────────────────────────────────────────
@@ -47,7 +47,8 @@ create trigger profiles_updated_at
 create table public.sales (
   id            uuid primary key default gen_random_uuid(),
   description   text not null,
-  sale_type     text not null check (sale_type in ('Single card','Lot','Slab','Other')),
+  -- Free text: the form offers Singles/Slabs/Sealed/Lot plus an "Other" box.
+  sale_type     text not null,
   qty           integer,
   condition     text,
   market_value  numeric(10,2),
@@ -155,7 +156,8 @@ create trigger inventory_updated_at
 create table public.contacts (
   id            uuid primary key default gen_random_uuid(),
   name          text not null,
-  role          text not null check (role in ('Seller','Buyer','Both','Wholesaler')),
+  -- Optional: the contact form does not collect a role.
+  role          text check (role in ('Seller','Buyer','Both','Wholesaler')),
   phone         text,
   preferred_pay text,
   notes         text,

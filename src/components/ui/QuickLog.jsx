@@ -1,13 +1,16 @@
 import { useState } from 'react'
-import { useSales, useBuys, useShows } from '../../hooks/useData'
+import { useSales, useBuys } from '../../hooks/useData'
 import { useAuth } from '../../context/AuthContext'
+import { useActiveShow } from '../../context/ShowContext'
 import { C, Label, Input, ChipGroup, CtaButton, Toast } from './FormComponents'
 
 export default function QuickLog({ activeShowId, onDone, onSave }) {
   const { insert: insertSale } = useSales()
   const { insert: insertBuy } = useBuys()
-  const { rows: shows } = useShows()
   const { profile } = useAuth()
+  // Name comes from ShowContext rather than a shows fetch — the previous
+  // useShows() was never fetched, so the pill below never rendered.
+  const { activeShowName } = useActiveShow()
 
   const [type, setType] = useState('sale')
   const [desc, setDesc] = useState('')
@@ -18,8 +21,6 @@ export default function QuickLog({ activeShowId, onDone, onSave }) {
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [count, setCount] = useState(0)
-
-  const activeShow = shows.find(s => s.id === activeShowId)
 
   async function handleSave() {
     if (!desc.trim()) { setMsg({ text: 'Enter a description.', type: 'error' }); return }
@@ -73,9 +74,9 @@ export default function QuickLog({ activeShowId, onDone, onSave }) {
         <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.07em', textTransform: 'uppercase' }}>
           Quick log {count > 0 && <span style={{ color: C.green }}>· {count} saved</span>}
         </div>
-        {activeShow && (
+        {activeShowName && (
           <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'rgba(245,158,11,.12)', color: '#F59E0B' }}>
-            {activeShow.name}
+            {activeShowName}
           </span>
         )}
       </div>
