@@ -340,6 +340,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [selectedItem, setSelectedItem] = useState(null)
   const [showCustomize, setShowCustomize] = useState(false)
+  const [completing, setCompleting] = useState(false)
+  const [showMsg, setShowMsg] = useState('')
 
   // Customizable preferences
   const userId = profile?.id || 'default'
@@ -424,7 +426,62 @@ export default function HomePage() {
   function handleSelectShow(id) {
     const show = shows.find(s => s.id === id)
     selectShow(id, show?.name)
-    if (activeShowId !== id) loadShowStats(id)
+    if (activeShowId !== id) {
+      loadShowStats(id)
+      markInProgress(show)
+    }
+  }
+
+  // Picking a show as active is the moment it actually starts, so reflect
+  // that in its status. Best-effort: RLS only lets admins and the show's
+  // creator write, and failing to update a status must never block the
+  // employee who just wants to log against it.
+  async function markInProgress(show) {
+    if (!show || show.status !== 'upcoming') return
+    try {
+      const { data } = await supabase.from('shows')
+        .update({ status: 'in_progress', updated_by: profile?.id, updated_at: new Date().toISOString() })
+        .eq('id', show.id).select()
+      if (data?.length) setShows(prev => prev.map(s => s.id === show.id ? { ...s, status: 'in_progress' } : s))
+    } catch (e) {
+      console.error('Could not mark show in progress:', e)
+    }
+  }
+
+  // "End & complete" — the one-tap replacement for Show > Edit > dropdown > Save.
+  async function completeActiveShow() {
+    if (!activeShowId || completing) return
+    const id = activeShowId
+    const show = shows.find(s => s.id === id)
+    setCompleting(true)
+    setShowMsg('')
+    try {
+      const { data, error } = await supabase.from('shows')
+        .update({ status: 'completed', updated_by: profile?.id, updated_at: new Date().toISOString() })
+        .eq('id', id).select()
+      if (error) throw error
+      // RLS filters silently rather than erroring, so an empty result means blocked.
+      if (!data?.length) throw new Error('You do not have permission to complete this show.')
+
+      await logActivity({
+        actionType: 'update_show',
+        entityType: 'shows',
+        entityId: id,
+        summary: `Completed show: ${show?.name || id}`,
+        beforeData: show,
+        afterData: data[0],
+      })
+
+      clearShow()
+      setShows(prev => prev.filter(s => s.id !== id))
+      setShowMsg(`${show?.name || 'Show'} marked completed.`)
+      setTimeout(() => setShowMsg(''), 4000)
+    } catch (e) {
+      console.error('Complete show failed:', e)
+      setShowMsg('Could not complete: ' + (e.message || 'Unknown error'))
+    } finally {
+      setCompleting(false)
+    }
   }
 
   // Refresh show stats when page loads (e.g. coming back from logging a sale)
@@ -487,17 +544,49 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Sits outside the bar below — completing the last active show
+          unmounts that bar, and the confirmation has to outlive it. */}
+      {showMsg && (
+        <div style={{
+          fontSize: 12, borderRadius: 10, padding: '9px 12px', marginBottom: 10,
+          color: showMsg.startsWith('Could not') ? C.red : C.green,
+          background: showMsg.startsWith('Could not') ? 'rgba(248,113,113,.08)' : 'rgba(16,185,129,.08)',
+          border: `1px solid ${showMsg.startsWith('Could not') ? 'rgba(248,113,113,.2)' : 'rgba(16,185,129,.2)'}`,
+        }}>
+          {showMsg}
+        </div>
+      )}
+
       {/* Show in progress bar */}
       {shows.length > 0 && (
         <div style={{ background: C.surface2, borderRadius: 14, padding: '12px 14px', marginBottom: 10, border: '1px solid rgba(245,158,11,.2)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <div style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase' }}>Show in progress</div>
             {activeShowId && (
-              <div onClick={() => clearShow()} style={{ fontSize: 10, fontWeight: 600, color: C.red, cursor: 'pointer', padding: '3px 9px', background: 'rgba(248,113,113,.08)', borderRadius: 7 }}>
-                End show
+              <div style={{ display: 'flex', gap: 6 }}>
+                {/* Deselect leaves the show open — only "End & complete" writes status. */}
+                <div
+                  onClick={() => clearShow()}
+                  style={{ fontSize: 10, fontWeight: 600, color: C.text3, cursor: 'pointer', padding: '3px 9px', background: 'rgba(255,255,255,.05)', borderRadius: 7 }}
+                >
+                  Deselect
+                </div>
+                <div
+                  onClick={completeActiveShow}
+                  style={{
+                    fontSize: 10, fontWeight: 600, borderRadius: 7, padding: '3px 9px',
+                    color: C.green, background: 'rgba(16,185,129,.1)',
+                    border: '1px solid rgba(16,185,129,.2)',
+                    cursor: completing ? 'not-allowed' : 'pointer',
+                    opacity: completing ? 0.6 : 1,
+                  }}
+                >
+                  {completing ? 'Ending…' : 'End & complete'}
+                </div>
               </div>
             )}
           </div>
+
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
             {shows.map(show => (
               <div
