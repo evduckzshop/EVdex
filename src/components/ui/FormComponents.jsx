@@ -1,13 +1,8 @@
 // Shared UI primitives for all form pages
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { C } from '../../lib/theme'
 
-export const C = {
-  surface: '#1E293B', surface2: '#162032', surface3: '#0F172A',
-  border: 'rgba(255,255,255,.07)', border2: 'rgba(255,255,255,.13)',
-  text: '#F1F5F9', text2: '#94A3B8', text3: '#475569',
-  accent: '#2563EB', accent2: '#3B82F6',
-  green: '#10B981', red: '#F87171', amber: '#F59E0B',
-}
+export { C }
 
 export function Label({ children, top = true }) {
   return (
@@ -122,7 +117,7 @@ export function PaymentPicker({ options, value, onChange, label }) {
   )
 }
 
-function DealSlider({ pctNum, barColor, onPct, mktNum, amtNum }) {
+function DealSlider({ pctNum, barColor, onPct, mktNum }) {
   const trackRef = useRef(null)
   const [dragging, setDragging] = useState(false)
   const displayPct = Math.min(pctNum, 100)
@@ -153,7 +148,8 @@ function DealSlider({ pctNum, barColor, onPct, mktNum, amtNum }) {
     setDragging(false)
   }
 
-  const canDrag = mktNum > 0 || amtNum > 0
+  // Dragging sets the price from market x %, so it does nothing without a market.
+  const canDrag = mktNum > 0
 
   return (
     <div style={{ marginTop: 8 }}>
@@ -203,19 +199,17 @@ function DealSlider({ pctNum, barColor, onPct, mktNum, amtNum }) {
 
 export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, isSale = false, lockRef, collapsible = true, compact = false, label }) {
   const [sliderOpen, setSliderOpen] = useState(!collapsible)
+  // Market and price are yours to type — neither is ever overwritten by the
+  // other. `%` is the derived readout; editing it (or dragging the slider)
+  // only ever moves the price, never the market.
   function onMarket(v) {
     if (lockRef.current) return; lockRef.current = true
     setMarket(v)
-    const m = parseFloat(v) || 0, p = parseFloat(pct) || 0
-    // If no % yet, auto-fill to 100
-    if (m > 0 && !p) {
-      setPct('100')
-      setAmount(String(Math.round(m * 100) / 100))
-    }
-    // % stays fixed, recalculate price
-    else if (m > 0 && p > 0) {
-      setAmount(String(Math.round(m * p / 100 * 100) / 100))
-    }
+    const m = parseFloat(v) || 0, a = parseFloat(amount) || 0, p = parseFloat(pct) || 0
+    // Both values present -> % re-derives, price is left alone.
+    if (m > 0 && a > 0) setPct(String(Math.round((a / m) * 1000) / 10))
+    // Price still blank -> seed it from the current (default) %.
+    else if (m > 0 && p > 0) setAmount(String(Math.round(m * p / 100 * 100) / 100))
     lockRef.current = false
   }
   function onAmount(v) {
@@ -228,9 +222,8 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
   function onPct(v) {
     if (lockRef.current) return; lockRef.current = true
     setPct(v)
-    const m = parseFloat(market) || 0, p = parseFloat(v) || 0, a = parseFloat(amount) || 0
+    const m = parseFloat(market) || 0, p = parseFloat(v) || 0
     if (m > 0 && p > 0) setAmount(String(Math.round(m * p / 100 * 100) / 100))
-    else if (p > 0 && a > 0) setMarket(String(Math.round(a / (p / 100) * 100) / 100))
     lockRef.current = false
   }
 
@@ -329,7 +322,7 @@ export function DealCalc({ market, setMarket, amount, setAmount, pct, setPct, is
                 {tagText}
               </div>
             </div>
-            <DealSlider pctNum={pctNum} barColor={barColor} onPct={onPct} mktNum={mktNum} amtNum={amtNum} />
+            <DealSlider pctNum={pctNum} barColor={barColor} onPct={onPct} mktNum={mktNum} />
             {isSale && amtNum > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
                 <div style={{ fontSize: 10, color: C.text3 }}>Sale price</div>

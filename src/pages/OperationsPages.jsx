@@ -26,6 +26,17 @@ const US_CITIES = [
   'Annapolis, MD','Columbia, MD','Bowie, MD','Frederick, MD','Silver Spring, MD',
 ]
 
+// Adds one day to a YYYY-MM-DD string. Parsed at midday so a DST shift can
+// never roll the result into the wrong calendar date.
+function nextDay(isoDate) {
+  const d = new Date(`${isoDate}T12:00:00`)
+  d.setDate(d.getDate() + 1)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+const prettyDay = iso => new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+
 function LocationInput({ value, onChange }) {
   const [input, setInput] = useState(value || '')
   const [open, setOpen] = useState(false)
@@ -155,6 +166,7 @@ export function ShowsPage() {
   const [location, setLocation] = useState('')
   const [fee, setFee] = useState('')
   const [notes, setNotes] = useState('')
+  const [twoDay, setTwoDay] = useState(false)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
 
@@ -162,11 +174,26 @@ export function ShowsPage() {
 
   async function handleSave() {
     if (!name.trim()) { setMsg({ text: 'Please enter a show name.', type: 'error' }); return }
+    if (twoDay && !date) { setMsg({ text: 'Pick a date — day 2 is scheduled from it.', type: 'error' }); return }
     setSaving(true)
     try {
-      await insert({ name: name.trim(), event_date: date||null, location: location||null, table_fee: parseFloat(fee)||0, notes: notes||null, status: 'upcoming' })
-      setMsg({ text: 'Show added!', type: 'success' })
-      setName(''); setDate(''); setLocation(''); setFee(''); setNotes('')
+      const feeTotal = parseFloat(fee) || 0
+      const shared = { location: location||null, notes: notes||null, status: 'upcoming' }
+
+      if (twoDay) {
+        // Split the weekend fee evenly. The odd cent goes to day 1 so the two
+        // rows always add back up to exactly what was entered.
+        const day2Fee = Math.floor((feeTotal / 2) * 100) / 100
+        const day1Fee = Math.round((feeTotal - day2Fee) * 100) / 100
+        await insert({ ...shared, name: `${name.trim()} Day 1`, event_date: date, table_fee: day1Fee })
+        await insert({ ...shared, name: `${name.trim()} Day 2`, event_date: nextDay(date), table_fee: day2Fee })
+        setMsg({ text: 'Two-day show added!', type: 'success' })
+      } else {
+        await insert({ ...shared, name: name.trim(), event_date: date||null, table_fee: feeTotal })
+        setMsg({ text: 'Show added!', type: 'success' })
+      }
+
+      setName(''); setDate(''); setLocation(''); setFee(''); setNotes(''); setTwoDay(false)
       setTimeout(() => navigate('/shows/manage'), 700)
     } catch (e) { setMsg({ text: 'Error: ' + e.message, type: 'error' })
     } finally { setSaving(false) }
@@ -187,13 +214,57 @@ export function ShowsPage() {
       <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Springfield Card Show" />
       <Label>Date</Label>
       <Input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ color: C.text2 }} />
+
+      {/* Two-day show toggle — creates two separate show records */}
+      <div
+        onClick={() => setTwoDay(!twoDay)}
+        style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 12, cursor: 'pointer', padding: '4px 0' }}
+      >
+        <div style={{
+          width: 36, height: 20, borderRadius: 10, padding: 2, flexShrink: 0,
+          background: twoDay ? 'rgba(245,158,11,.3)' : 'rgba(255,255,255,.08)',
+          transition: 'background .2s', display: 'flex', alignItems: 'center',
+        }}>
+          <div style={{
+            width: 16, height: 16, borderRadius: '50%',
+            background: twoDay ? C.amber : '#475569',
+            transform: twoDay ? 'translateX(16px)' : 'translateX(0)',
+            transition: 'transform .2s, background .2s',
+          }} />
+        </div>
+        <div style={{ fontSize: 12, color: twoDay ? C.text : C.text3, fontWeight: 500 }}>
+          2-day show {twoDay && <span style={{ color: C.amber }}>ON</span>}
+        </div>
+      </div>
+
+      {twoDay && (
+        <div style={{ background: C.surface2, borderRadius: 11, padding: '10px 12px', marginTop: 8, border: '1px solid rgba(245,158,11,.2)' }}>
+          {date ? (
+            <>
+              <div style={{ fontSize: 11, color: C.text2, lineHeight: 1.6 }}>
+                Creates <span style={{ fontWeight: 600, color: C.text }}>{name.trim() || 'Show'} Day 1</span> · {prettyDay(date)}
+                <br />
+                and <span style={{ fontWeight: 600, color: C.text }}>{name.trim() || 'Show'} Day 2</span> · {prettyDay(nextDay(date))}
+              </div>
+              {parseFloat(fee) > 0 && (
+                <div style={{ fontSize: 10, color: C.text3, marginTop: 6 }}>
+                  Table fee split evenly — ${(Math.round((parseFloat(fee) - Math.floor((parseFloat(fee) / 2) * 100) / 100) * 100) / 100).toFixed(2)} + ${(Math.floor((parseFloat(fee) / 2) * 100) / 100).toFixed(2)}
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ fontSize: 11, color: C.amber }}>Pick a date above — day 2 is scheduled from it.</div>
+          )}
+        </div>
+      )}
+
       <Label>Location</Label>
       <LocationInput value={location} onChange={setLocation} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div><Label>Table fee ($)</Label><Input type="number" value={fee} onChange={e => setFee(e.target.value)} placeholder="0.00" /></div>
+        <div><Label>{twoDay ? 'Table fee — total ($)' : 'Table fee ($)'}</Label><Input type="number" value={fee} onChange={e => setFee(e.target.value)} placeholder="0.00" /></div>
         <div><Label>Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Crowd, vibe…" /></div>
       </div>
-      <CtaButton onClick={handleSave} disabled={saving} color="orange">{saving ? 'Saving…' : 'Add show'}</CtaButton>
+      <CtaButton onClick={handleSave} disabled={saving} color="orange">{saving ? 'Saving…' : twoDay ? 'Add 2-day show' : 'Add show'}</CtaButton>
       <GhostButton onClick={() => navigate('/shows/manage')}>Cancel</GhostButton>
       <div onClick={() => navigate('/shows/manage')} style={{ fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', margin: '20px 0 8px', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
         Show history

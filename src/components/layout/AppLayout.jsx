@@ -5,14 +5,7 @@ import { useNav } from '../../context/NavigationContext'
 import { signOut } from '../../lib/supabase'
 import PageTransition from './PageTransition'
 import { StaffBadgePill } from '../ui/StaffBadge'
-
-const C = {
-  bg: '#111318', surface: '#1E293B', surface2: '#162032', surface3: '#0F172A',
-  border: 'rgba(255,255,255,.07)', border2: 'rgba(255,255,255,.13)',
-  text: '#F1F5F9', text2: '#94A3B8', text3: '#475569',
-  accent: '#2563EB', accent2: '#3B82F6',
-  green: '#10B981', red: '#F87171', amber: '#F59E0B',
-}
+import { C } from '../../lib/theme'
 
 // Standalone nav items (always visible, not in a group)
 const STANDALONE_ITEMS = [
@@ -37,7 +30,7 @@ const NAV_GROUPS = [
   ]},
   { group: 'Reporting', items: [
     { id: 'reporting', label: 'General Reporting', path: '/reporting',      adminOnly: true },
-    { id: 'compare',   label: 'Show Comparison',  path: '/shows/compare',  adminOnly: true },
+    { id: 'stats',     label: 'Show Stats',       path: '/shows/stats',    adminOnly: true },
     { id: 'export',    label: 'Export',            path: '/export',         adminOnly: true },
   ]},
   { group: 'Team', items: [
@@ -353,7 +346,7 @@ export default function AppLayout({ children }) {
 }
 
 function getPageTitle(path) {
-  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/transactions': 'Transactions', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/shows/compare': 'Show Comparison', '/export': 'Export', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/contacts/add': 'Add Contact', '/settings': 'Settings', '/profile': 'Profile', '/pong': 'Pong', '/gamble': 'Gamble', '/trade': 'Trade' }
+  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/transactions': 'Transactions', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/shows/stats': 'Show Stats', '/export': 'Export', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/contacts/add': 'Add Contact', '/settings': 'Settings', '/profile': 'Profile', '/pong': 'Pong', '/gamble': 'Gamble', '/trade': 'Trade' }
   if (map[path]) return map[path]
   if (path.match(/^\/contacts\/[^/]+\/edit$/)) return 'Edit Contact'
   if (path.match(/^\/contacts\/[^/]+$/)) return 'Contact'
