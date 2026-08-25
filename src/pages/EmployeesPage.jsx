@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { getAllProfiles, inviteEmployee, setUserActive, supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { StaffBadgePill, StaffBadgeEditor } from '../components/ui/StaffBadge'
+import { C } from '../lib/theme'
 
-const C = { surface: '#1E293B', surface2: '#162032', border: 'rgba(255,255,255,.07)', border2: 'rgba(255,255,255,.13)', text: '#F1F5F9', text2: '#94A3B8', text3: '#475569', accent: '#2563EB', accent2: '#3B82F6', green: '#10B981', red: '#F87171', amber: '#F59E0B' }
 const inputStyle = { width: '100%', padding: '11px 13px', background: C.surface2, border: `1px solid ${C.border2}`, borderRadius: 11, fontSize: 14, color: C.text, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }
 const labelStyle = { fontSize: 10, fontWeight: 600, color: C.text2, letterSpacing: '.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6, marginTop: 14 }
 

@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-
-const C = { text3: '#475569', accent: '#2563EB' }
+import { C } from '../../lib/theme'
 
 export default function PullToRefresh({ onRefresh, children }) {
   const [pulling, setPulling] = useState(false)

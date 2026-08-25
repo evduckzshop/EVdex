@@ -9,6 +9,10 @@ import { C, Label, Input, Select, ChipGroup, DealCalc, CtaButton, GhostButton, T
 import LotCalculator, { entriesToLotData, lotDataToEntries, computeLotTotals } from '../components/ui/LotCalculator'
 import QuickLog from '../components/ui/QuickLog'
 
+// The chips and the edit-prefill "known types" check must stay in sync —
+// they were two separate literals, and 'Slabs' vs 'Slab' drifted apart.
+const SALE_TYPES = ['Singles', 'Slabs', 'Sealed', 'Lot']
+
 export default function SalesPage() {
   const { insert, update, rows, fetch, loading } = useSales()
   const { rows: contacts, fetch: fetchContacts } = useContacts()
@@ -57,9 +61,8 @@ export default function SalesPage() {
   // Pre-fill form when editing
   useEffect(() => {
     if (editRecord) {
-      const knownTypes = ['Singles', 'Lot', 'Slab', 'Sealed']
       const editType = editRecord.sale_type || 'Singles'
-      if (knownTypes.includes(editType)) {
+      if (SALE_TYPES.includes(editType)) {
         setSaleType(editType)
         setCustomSaleType('')
       } else {
@@ -208,7 +211,7 @@ export default function SalesPage() {
       ) : (
       <>
       <Label top={false}>Sale type</Label>
-      <ChipGroup options={['Singles','Slabs','Sealed','Lot','Other']} value={saleType} onChange={v => { setSaleType(v); if (v !== 'Other') setCustomSaleType('') }} color="green" />
+      <ChipGroup options={[...SALE_TYPES, 'Other']} value={saleType} onChange={v => { setSaleType(v); if (v !== 'Other') setCustomSaleType('') }} color="green" />
       {saleType === 'Other' && (
         <Input value={customSaleType} onChange={e => setCustomSaleType(e.target.value)} placeholder="Enter sale type..." style={{ marginTop: 8 }} />
       )}

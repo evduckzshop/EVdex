@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { C } from '../components/ui/FormComponents'
+import { totalsWithTrades } from '../lib/finance'
 
 export default function ShowDetailPage() {
   const { id } = useParams()
@@ -50,15 +51,7 @@ export default function ShowDetailPage() {
   }
 
   // Stats — include trade settlement cash in sales/buys
-  let totalRevenue = sales.reduce((s, r) => s + Number(r.sale_price || 0), 0)
-  let totalSpent = buys.reduce((s, r) => s + Number(r.amount_paid || 0), 0)
-  trades.forEach(tr => {
-    const paid = Number(tr.amount_paid) || 0
-    if (paid > 0) {
-      if (tr.delta > 0) totalRevenue += paid
-      else if (tr.delta < 0) totalSpent += paid
-    }
-  })
+  const { revenue: totalRevenue, spend: totalSpent } = totalsWithTrades({ sales, buys, trades })
   const tableFee = Number(show.table_fee || 0)
   const netProfit = totalRevenue - totalSpent - tableFee
   const totalTransactions = sales.length + buys.length + trades.length
@@ -273,7 +266,7 @@ export default function ShowDetailPage() {
                 amount={`-$${Number(r.amount_paid).toFixed(2)}`}
                 amountColor="#F87171"
                 payment={r.payment}
-                meta={`${r.seller || 'Unknown'} · ${new Date(r.created_at).toLocaleDateString()}`}
+                meta={`${r.source || 'Unknown'} · ${new Date(r.created_at).toLocaleDateString()}`}
               />
             </div>
           ))

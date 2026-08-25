@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase, uploadAvatar } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { signOut } from '../../lib/supabase'
-import { C, TIER_COLORS } from '../../components/layout/CustomerLayout'
+import { C, TIER_COLORS } from '../../lib/theme'
 
 export default function PortalProfile() {
   const { user, profile, refreshProfile } = useAuth()

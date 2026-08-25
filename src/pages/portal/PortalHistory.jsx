@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
-import { C } from '../../components/layout/CustomerLayout'
+import { C } from '../../lib/theme'
 
 export default function PortalHistory() {
   const { user } = useAuth()

@@ -28,7 +28,7 @@ const ShowManagePage = lazy(() => import('./pages/ShowManagePage'))
 const ShowDetailPage = lazy(() => import('./pages/ShowDetailPage'))
 const TransactionsPage = lazy(() => import('./pages/TransactionsPage'))
 const PongPage         = lazy(() => import('./pages/PongPage'))
-const ShowComparePage  = lazy(() => import('./pages/ShowComparePage'))
+const ShowStatsPage    = lazy(() => import('./pages/ShowStatsPage'))
 const CashFlowPage   = lazy(() => import('./pages/CashFlowPage'))
 const PLPage         = lazy(() => import('./pages/PLPage'))
 const ReportingPage  = lazy(() => import('./pages/ReportingPage'))
@@ -107,7 +107,9 @@ export default function App() {
           <Route path="/cashflow" element={<RequireAdmin><Layout><CashFlowPage /></Layout></RequireAdmin>} />
           <Route path="/pl" element={<RequireAdmin><Layout><PLPage /></Layout></RequireAdmin>} />
           <Route path="/reporting" element={<RequireAdmin><Layout><ReportingPage /></Layout></RequireAdmin>} />
-          <Route path="/shows/compare" element={<RequireAdmin><Layout><ShowComparePage /></Layout></RequireAdmin>} />
+          <Route path="/shows/stats" element={<RequireAdmin><Layout><ShowStatsPage /></Layout></RequireAdmin>} />
+          {/* Show Comparison was folded into Show Stats */}
+          <Route path="/shows/compare" element={<Navigate to="/shows/stats" replace />} />
           <Route path="/export" element={<RequireAdmin><Layout><ExportPage /></Layout></RequireAdmin>} />
           <Route path="/employees" element={<RequireAdmin><Layout><EmployeesPage /></Layout></RequireAdmin>} />
           <Route path="/activity" element={<RequireAdmin><Layout><ActivityPage /></Layout></RequireAdmin>} />

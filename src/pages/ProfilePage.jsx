@@ -3,8 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { updateProfile, signOut, uploadAvatar } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { StaffBadgePill, StaffBadgeEditor } from '../components/ui/StaffBadge'
-
-const C = { surface: '#1E293B', surface2: '#162032', border: 'rgba(255,255,255,.07)', border2: 'rgba(255,255,255,.13)', text: '#F1F5F9', text2: '#94A3B8', text3: '#475569', accent: '#2563EB', green: '#10B981', red: '#F87171' }
+import { C } from '../lib/theme'
 
 const inputStyle = { width: '100%', padding: '11px 13px', background: C.surface2, border: `1px solid ${C.border2}`, borderRadius: 11, fontSize: 14, color: C.text, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }
 const labelStyle = { fontSize: 10, fontWeight: 600, color: C.text2, letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 6, marginTop: 14, display: 'block' }

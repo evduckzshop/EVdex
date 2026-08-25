@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSales, useBuys, useTrades } from '../hooks/useData'
 import { C, Input, Select, ChipGroup, RecordCard } from '../components/ui/FormComponents'
+import { sumBy, splitTradeCash } from '../lib/finance'
 
 const TYPES = ['All', 'Sales', 'Buys', 'Trades']
 
@@ -47,16 +48,12 @@ export default function TransactionsPage() {
     return true
   })
 
-  let totalSales = filtered.filter(r => r._type === 'sale').reduce((s, r) => s + r._amount, 0)
-  let totalBuys = filtered.filter(r => r._type === 'buy').reduce((s, r) => s + r._amount, 0)
-  // Include trade settlement cash in totals
-  filtered.filter(r => r._type === 'trade').forEach(r => {
-    const paid = Number(r.amount_paid) || 0
-    if (paid > 0) {
-      if (r.delta > 0) totalSales += paid
-      else if (r.delta < 0) totalBuys += paid
-    }
-  })
+  // Partition once, then total. Trade settlement cash counts as sale/buy.
+  const byType = { sale: [], buy: [], trade: [] }
+  for (const r of filtered) byType[r._type]?.push(r)
+  const { inflow, outflow } = splitTradeCash(byType.trade)
+  const totalSales = sumBy(byType.sale, '_amount') + inflow
+  const totalBuys = sumBy(byType.buy, '_amount') + outflow
 
   return (
     <div style={{ paddingTop: 12 }}>

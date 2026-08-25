@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useContacts, useSales, useBuys } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
@@ -14,10 +14,15 @@ const SORT_OPTIONS = [
 ]
 const LAYOUT_KEY = 'evdex_contacts_layout'
 
-function getTxData(contactId, contactName, sales, buys) {
-  const cSales = sales.filter(s => s.buyer_contact_id === contactId)
-  const cBuys = buys.filter(b => b.source_contact_id === contactId)
-  return { cSales, cBuys, count: cSales.length + cBuys.length }
+// One pass over sales+buys produces every contact's transaction count.
+// Previously each contact re-scanned both full tables, once per sort
+// comparison and again per rendered row.
+function buildTxCounts(sales, buys) {
+  const counts = new Map()
+  const bump = id => { if (id) counts.set(id, (counts.get(id) || 0) + 1) }
+  for (const s of sales) bump(s.buyer_contact_id)
+  for (const b of buys) bump(b.source_contact_id)
+  return counts
 }
 
 // ── CONTACTS LIST PAGE (/contacts) ──────────────────────────────
@@ -33,6 +38,8 @@ export default function ContactsListPage() {
 
   useEffect(() => { fetch(); fetchSales(); fetchBuys() }, [])
 
+  const txCounts = useMemo(() => buildTxCounts(sales, buys), [sales, buys])
+
   function switchLayout(l) { setLayout(l); localStorage.setItem(LAYOUT_KEY, l) }
 
   let filtered = rows.filter(r => {
@@ -42,7 +49,7 @@ export default function ContactsListPage() {
 
   if (sort === 'alpha') filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
   else if (sort === 'recent') filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  else if (sort === 'transactions') filtered.sort((a, b) => getTxData(b.id, b.name, sales, buys).count - getTxData(a.id, a.name, sales, buys).count)
+  else if (sort === 'transactions') filtered.sort((a, b) => (txCounts.get(b.id) || 0) - (txCounts.get(a.id) || 0))
 
   return (
     <div style={{ paddingTop: 12 }}>
@@ -86,7 +93,7 @@ export default function ContactsListPage() {
         : filtered.length === 0 ? <div style={{ textAlign: 'center', color: C.text3, padding: 20, fontSize: 13 }}>No contacts found.</div>
         : layout === 'card' ? (
           filtered.map((r, i) => {
-            const txCount = getTxData(r.id, r.name, sales, buys).count
+            const txCount = txCounts.get(r.id) || 0
             return (
               <div key={r.id} onClick={() => navigate(`/contacts/${r.id}`)} style={{ background: C.surface, borderRadius: 14, padding: '12px 13px', marginBottom: 8, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer' }}>
                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: r.avatar_url ? `url(${r.avatar_url}) center/cover no-repeat` : AVATAR_COLORS[i % AVATAR_COLORS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
@@ -104,7 +111,7 @@ export default function ContactsListPage() {
         ) : (
           <div style={{ background: C.surface, borderRadius: 14, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
             {filtered.map((r, i) => {
-              const txCount = getTxData(r.id, r.name, sales, buys).count
+              const txCount = txCounts.get(r.id) || 0
               return (
                 <div key={r.id} onClick={() => navigate(`/contacts/${r.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 13px', cursor: 'pointer', borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : 'none' }}>
                   <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.nickname ? <span style={{ color: C.text3, fontWeight: 400 }}> ({r.nickname})</span> : ''}</div>
