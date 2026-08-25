@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { supabase, logActivity } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -9,6 +9,18 @@ function useTable(tableName) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  // Mirror of `rows` for the mutation callbacks. Reading state through a ref
+  // keeps insert/update/remove referentially stable, so they can safely be
+  // used inside effects without re-running them on every data change.
+  const rowsRef = useRef(rows)
+  const commitRows = useCallback(next => {
+    setRows(prev => {
+      const value = typeof next === 'function' ? next(prev) : next
+      rowsRef.current = value
+      return value
+    })
+  }, [])
+
   const fetch = useCallback(async (filters = {}) => {
     setLoading(true)
     setError(null)
@@ -17,13 +29,13 @@ function useTable(tableName) {
       Object.entries(filters).forEach(([k, v]) => { query = query.eq(k, v) })
       const { data, error } = await query
       if (error) throw error
-      setRows(data)
+      commitRows(data)
     } catch (e) {
       setError(e.message)
     } finally {
       setLoading(false)
     }
-  }, [tableName])
+  }, [tableName, commitRows])
 
   // Tables without updated_at/updated_by columns
   const noUpdatedAt = ['contacts']
@@ -42,13 +54,13 @@ function useTable(tableName) {
       summary: `Created ${tableName.replace(/s$/, '')}: ${record.description || record.name || record.id}`,
       afterData: data,
     })
-    setRows(prev => [data, ...prev])
+    commitRows(prev => [data, ...prev])
     return data
-  }, [user, tableName])
+  }, [user, tableName, commitRows])
 
   const update = useCallback(async (id, updates) => {
     if (!user) throw new Error('Not authenticated')
-    const before = rows.find(r => r.id === id)
+    const before = rowsRef.current.find(r => r.id === id)
     const patch = { ...updates }
     if (!noUpdatedAt.includes(tableName)) { patch.updated_by = user.id; patch.updated_at = new Date().toISOString() }
     const { data, error } = await supabase.from(tableName).update(patch).eq('id', id).select().single()
@@ -61,13 +73,13 @@ function useTable(tableName) {
       beforeData: before,
       afterData: data,
     })
-    setRows(prev => prev.map(r => r.id === id ? data : r))
+    commitRows(prev => prev.map(r => r.id === id ? data : r))
     return data
-  }, [user, tableName, rows])
+  }, [user, tableName, commitRows])
 
   const remove = useCallback(async (id) => {
     if (!user) throw new Error('Not authenticated')
-    const before = rows.find(r => r.id === id)
+    const before = rowsRef.current.find(r => r.id === id)
     const { error, count } = await supabase.from(tableName).delete().eq('id', id).select()
     if (error) throw error
     // Verify the delete actually happened (RLS can silently block)
@@ -80,8 +92,8 @@ function useTable(tableName) {
       summary: `Deleted ${tableName.replace(/s$/, '')}`,
       beforeData: before,
     })
-    setRows(prev => prev.filter(r => r.id !== id))
-  }, [user, tableName, rows])
+    commitRows(prev => prev.filter(r => r.id !== id))
+  }, [user, tableName, commitRows])
 
   return { rows, loading, error, fetch, insert, update, remove }
 }

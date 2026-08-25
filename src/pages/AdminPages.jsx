@@ -7,14 +7,8 @@ import {
   fetchInventoryReport, fetchShowPLReport,
   generateCSV, generatePDF, downloadFile,
 } from '../lib/exportUtils'
-
-const C = {
-  surface: '#1E293B', surface2: '#162032', surface3: '#0F172A',
-  border: 'rgba(255,255,255,.07)', border2: 'rgba(255,255,255,.13)',
-  text: '#F1F5F9', text2: '#94A3B8', text3: '#475569',
-  accent: '#2563EB', accent2: '#3B82F6',
-  green: '#10B981', red: '#F87171', amber: '#F59E0B',
-}
+import { C } from '../lib/theme'
+import { sumBy, totalsWithTrades } from '../lib/finance'
 
 const sectionHd = { fontSize: 10, fontWeight: 600, color: C.text3, letterSpacing: '.08em', textTransform: 'uppercase', margin: '14px 0 8px' }
 const rcard = { background: C.surface, borderRadius: 14, padding: 14, marginBottom: 10, border: `1px solid ${C.border}` }
@@ -51,17 +45,8 @@ export function CashFlowPage() {
         if (b.error) throw b.error
         if (e.error) throw e.error
         if (t.error) throw t.error
-        let sales = (s.data||[]).reduce((sum,r) => sum + Number(r.sale_price), 0)
-        let buys = (b.data||[]).reduce((sum,r) => sum + Number(r.amount_paid), 0)
-        ;(t.data||[]).forEach(tr => {
-          const paid = Number(tr.amount_paid) || 0
-          if (paid > 0) {
-            if (tr.delta > 0) sales += paid
-            else if (tr.delta < 0) buys += paid
-          }
-        })
-        const expenses = (e.data||[]).reduce((sum,r) => sum + Number(r.amount), 0)
-        setData({ sales, buys, expenses })
+        const { revenue, spend } = totalsWithTrades({ sales: s.data, buys: b.data, trades: t.data })
+        setData({ sales: revenue, buys: spend, expenses: sumBy(e.data, 'amount') })
       } catch (e) {
         setError(e.message || 'Failed to load cash flow data')
         console.error('CashFlowPage load error:', e)
@@ -170,17 +155,9 @@ export function PLPage() {
   const filteredFees = showFilter === 'overall' ? data.shows : data.shows.filter(r => r.id === showFilter)
   const filteredTrades = showFilter === 'overall' ? (data.trades || []) : (data.trades || []).filter(r => r.show_id === showFilter)
 
-  let rev = filteredSales.reduce((s, r) => s + Number(r.sale_price), 0)
-  let cogs = filteredBuys.reduce((s, r) => s + Number(r.amount_paid), 0)
-  filteredTrades.forEach(tr => {
-    const paid = Number(tr.amount_paid) || 0
-    if (paid > 0) {
-      if (tr.delta > 0) rev += paid
-      else if (tr.delta < 0) cogs += paid
-    }
-  })
-  const fees = filteredFees.reduce((s, r) => s + Number(r.table_fee || 0), 0)
-  const exp = filteredExp.reduce((s, r) => s + Number(r.amount), 0)
+  const { revenue: rev, spend: cogs } = totalsWithTrades({ sales: filteredSales, buys: filteredBuys, trades: filteredTrades })
+  const fees = sumBy(filteredFees, 'table_fee')
+  const exp = sumBy(filteredExp, 'amount')
   const gross = rev - cogs
   const net = gross - fees - exp
   const gm = rev > 0 ? ((gross / rev) * 100).toFixed(1) : '0'
@@ -279,16 +256,8 @@ export function ReportingPage() {
   if (loading) return <div style={{ paddingTop: 24, textAlign: 'center', color: C.text3 }}>Loading…</div>
   if (error) return <div style={{ paddingTop: 24 }}><div style={{ background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.2)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.red }}>{error}</div></div>
 
-  let totalSales = data.sales.reduce((s,r) => s+Number(r.sale_price), 0)
-  let totalBuys = data.buys.reduce((s,r) => s+Number(r.amount_paid), 0)
-  ;(data.trades||[]).forEach(tr => {
-    const paid = Number(tr.amount_paid) || 0
-    if (paid > 0) {
-      if (tr.delta > 0) totalSales += paid
-      else if (tr.delta < 0) totalBuys += paid
-    }
-  })
-  const totalExp = data.expenses.reduce((s,r) => s+Number(r.amount), 0)
+  const { revenue: totalSales, spend: totalBuys } = totalsWithTrades({ sales: data.sales, buys: data.buys, trades: data.trades })
+  const totalExp = sumBy(data.expenses, 'amount')
 
   // By sale type
   const byType = {}

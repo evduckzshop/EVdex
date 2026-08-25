@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
-import { C, TIER_COLORS } from '../../components/layout/CustomerLayout'
+import { C, TIER_COLORS } from '../../lib/theme'
 import { BadgeChip } from '../../components/ui/BadgeCard'
 
 const TIER_ICONS = {

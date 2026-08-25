@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { sumBy, totalsWithTrades } from './finance'
 
 // ── Date range helpers ──────────────────────────────────────────
 
@@ -195,17 +196,10 @@ export async function fetchShowPLReport(start, end) {
   const tradesByShow = groupBy(tradesRes.data || [], 'show_id')
 
   return shows.map(s => {
-    let rev = (salesByShow[s.id] || []).reduce((sum, r) => sum + Number(r.sale_price), 0)
-    let cogs = (buysByShow[s.id] || []).reduce((sum, r) => sum + Number(r.amount_paid), 0)
-    // Include trade settlement cash
-    ;(tradesByShow[s.id] || []).forEach(tr => {
-      const paid = Number(tr.amount_paid) || 0
-      if (paid > 0) {
-        if (tr.delta > 0) rev += paid
-        else if (tr.delta < 0) cogs += paid
-      }
+    const { revenue: rev, spend: cogs } = totalsWithTrades({
+      sales: salesByShow[s.id], buys: buysByShow[s.id], trades: tradesByShow[s.id],
     })
-    const exp = (expByShow[s.id] || []).reduce((sum, r) => sum + Number(r.amount), 0)
+    const exp = sumBy(expByShow[s.id], 'amount')
     const fee = Number(s.table_fee) || 0
     const net = rev - cogs - exp - fee
     return {

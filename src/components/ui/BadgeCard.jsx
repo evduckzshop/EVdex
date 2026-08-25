@@ -1,3 +1,5 @@
+import { C } from '../../lib/theme'
+
 // Shared badge display component with premium effects
 // Used in: PortalBadges, PortalDashboard, ContactDetailPage
 
@@ -17,12 +19,6 @@ function getBadgeEffect(badge) {
   if (spend >= 10000) return 'holo'      // Legendary — full rainbow holo
   if (spend >= 5000)  return 'gold-glow'  // Grail Hunter — gold glow
   return null                              // All others — no effect
-}
-
-const C = {
-  surface: '#1E293B', surface2: '#162032',
-  border: 'rgba(255,255,255,.07)',
-  text: '#F1F5F9', text3: '#475569',
 }
 
 // CSS keyframes injected once

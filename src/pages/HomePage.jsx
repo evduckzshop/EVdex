@@ -5,14 +5,8 @@ import { useNav } from '../context/NavigationContext'
 import { useActiveShow } from '../context/ShowContext'
 import { supabase, logActivity } from '../lib/supabase'
 import PullToRefresh from '../components/ui/PullToRefresh'
-
-const C = {
-  surface: '#1E293B', surface2: '#162032', surface3: '#0F172A',
-  border: 'rgba(255,255,255,.07)', border2: 'rgba(255,255,255,.13)',
-  text: '#F1F5F9', text2: '#94A3B8', text3: '#475569',
-  accent: '#2563EB', accent2: '#3B82F6',
-  green: '#10B981', red: '#F87171', amber: '#F59E0B',
-}
+import { C } from '../lib/theme'
+import { totalsWithTrades } from '../lib/finance'
 
 function StatCard({ label, value, color }) {
   return (
@@ -60,11 +54,13 @@ function ActivityCard({ item, onTap }) {
 }
 
 function ActivityDetail({ item, onClose, isAdmin, onDelete, navigate }) {
-  if (!item) return null
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [photoExpanded, setPhotoExpanded] = useState(false)
+
+  if (!item) return null
+
   const isSale = item.type === 'sale'
   const isBuy = item.type === 'buy'
   const isTrade = item.type === 'trade'
@@ -418,17 +414,8 @@ export default function HomePage() {
         supabase.from('buys').select('amount_paid').eq('show_id', id),
         supabase.from('trades').select('delta,amount_paid').eq('show_id', id),
       ])
-      let salesTotal = (s.data || []).reduce((sum, r) => sum + Number(r.sale_price), 0)
-      let buysTotal = (b.data || []).reduce((sum, r) => sum + Number(r.amount_paid), 0)
-      // Trade settlement cash: customer pays you = sale, you pay customer = buy
-      ;(t.data || []).forEach(tr => {
-        const paid = Number(tr.amount_paid) || 0
-        if (paid > 0) {
-          if (tr.delta > 0) salesTotal += paid
-          else if (tr.delta < 0) buysTotal += paid
-        }
-      })
-      setLiveShow({ sales: salesTotal, buys: buysTotal, fee: Number(show.table_fee) || 0 })
+      const { revenue, spend } = totalsWithTrades({ sales: s.data, buys: b.data, trades: t.data })
+      setLiveShow({ sales: revenue, buys: spend, fee: Number(show.table_fee) || 0 })
     } catch (e) {
       console.error('Failed to load show stats:', e)
     }

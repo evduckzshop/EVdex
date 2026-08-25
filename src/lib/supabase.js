@@ -76,11 +76,14 @@ export async function getAllProfiles() {
 // ── Activity log helper ───────────────────────────────────────
 
 export async function logActivity({ actionType, entityType, entityId, summary, beforeData, afterData }) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+  // getSession() reads the cached session; getUser() would add a network
+  // round-trip to the auth server on every insert/update/delete.
+  const { data: { session } } = await supabase.auth.getSession()
+  const userId = session?.user?.id
+  if (!userId) return
 
   const { error } = await supabase.from('activity_logs').insert({
-    user_id: user.id,
+    user_id: userId,
     action_type: actionType,
     entity_type: entityType,
     entity_id: entityId || null,

@@ -1,13 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
-
-const C = {
-  surface: '#1E293B', surface2: '#162032', surface3: '#0F172A',
-  border: 'rgba(255,255,255,.07)', border2: 'rgba(255,255,255,.13)',
-  text: '#F1F5F9', text2: '#94A3B8', text3: '#475569',
-  accent: '#2563EB', accent2: '#3B82F6',
-  green: '#10B981', red: '#F87171',
-}
+import { C } from '../../lib/theme'
 
 const BADGE_COLORS = {
   red:    { bg: 'rgba(248,113,113,.15)', text: '#F87171', border: 'rgba(248,113,113,.35)', glow: '#F87171' },
