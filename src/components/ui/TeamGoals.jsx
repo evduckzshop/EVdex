@@ -3,8 +3,18 @@ import { supabase, logActivity } from '../../lib/supabase'
 import { C } from '../../lib/theme'
 
 // "Team Goals" — the message the team reads at the table: what we're buying,
-// at what parameters, and when to escalate. Free text, one rule per line,
-// because real mandates ("300-1000 check with matt") don't fit a form.
+// at what parameters, and when to escalate.
+//
+// Real briefs are sections with items under them, not a flat list:
+//
+//   PSA BUY LIST: 85% payout     <- section
+//     0-50 7 cert +              <- its items
+//     100-300 7 cert + conf 4+
+//   RAW:                         <- section
+//     Singles for snipr 85% max
+//
+// Sections are detected from how people already write them, so there's no
+// markup to learn.
 //
 // The column is still shows.team_brief: the feature was named Team Goals
 // after migration 006 had already been applied, and renaming a column
@@ -12,8 +22,6 @@ import { C } from '../../lib/theme'
 
 const EXPANDED_KEY = 'evdex_brief_expanded'
 const MAX_BRIEF_CHARS = 4000
-
-const briefLines = text => (text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
 
 // localStorage throws in private browsing and with site data blocked. This
 // renders on the home screen, so a throw here would white-screen the app.
@@ -30,29 +38,59 @@ const SUPPORTS_CLIP = typeof CSS !== 'undefined'
   && typeof CSS.supports === 'function'
   && (CSS.supports('-webkit-background-clip', 'text') || CSS.supports('background-clip', 'text'))
 
-// Classify each rule from its own text. Deliberately conservative — a
-// miscoloured line is worse than an uncoloured one, so anything unclear
-// falls through to neutral.
-function classifyRule(line) {
-  const l = line.toLowerCase()
+// Sections rotate through these so two blocks never blur together. Amber and
+// red are excluded — they mean "ask" and "bad" elsewhere in the app.
+const SECTION_COLORS = [C.diamond, C.accent2, C.green]
 
-  // Escalation first: these matter most and often contain numbers too.
-  if (/(check with|check w\/|ask |ask$|approval|approve|confirm with|run by)/.test(l)) {
-    return { color: C.amber, chipBg: 'rgba(245,158,11,.15)', tag: 'ask' }
+// A heading is how you'd naturally write one: ending in a colon ("RAW:"),
+// a shouted label before a colon ("PSA BUY LIST: 85% payout"), or a short
+// line in full caps. Everything else is an item.
+export function isHeading(line) {
+  if (!line) return false
+  if (line.endsWith(':')) return true
+
+  const hasLetter = /[a-z]/i.test(line)
+  if (!hasLetter) return false
+
+  const colon = line.indexOf(':')
+  if (colon > 0 && colon <= 28) {
+    const label = line.slice(0, colon)
+    if (label === label.toUpperCase()) return true
   }
-  // A pricing rule.
-  if (l.includes('%')) {
-    return { color: C.accent2, chipBg: 'rgba(37,99,235,.15)', tag: null }
+  // A short all-caps line with no colon, e.g. "RAW SINGLES".
+  if (line.length <= 30 && line === line.toUpperCase()) return true
+
+  return false
+}
+
+// Escalation is the one per-line flag worth keeping — it's the difference
+// between deciding yourself and ringing someone.
+export function needsAsk(line) {
+  return /(check with|check w\/|ask |ask$|approval|approve|confirm with|run by)/i.test(line)
+}
+
+// Group lines under their headings. Items written before any heading collect
+// into a single untitled block so nothing is ever dropped.
+export function parseGoals(text) {
+  const groups = []
+  let current = null
+  for (const raw of (text || '').split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line) continue
+    if (isHeading(line) || !current) {
+      current = { heading: isHeading(line) ? line : null, items: [] }
+      groups.push(current)
+      if (current.heading) continue
+    }
+    current.items.push(line)
   }
-  // A want-list: names, no figures.
-  if (!/\d/.test(l) && l.includes(',')) {
-    return { color: C.green, chipBg: 'rgba(16,185,129,.15)', tag: 'wanted' }
-  }
-  return { color: C.text3, chipBg: 'rgba(255,255,255,.06)', tag: null }
+  return groups
 }
 
 export default function TeamGoals({ show, isAdmin, onSaved }) {
-  const lines = briefLines(show?.team_brief)
+  const groups = parseGoals(show?.team_brief)
+  const hasContent = groups.length > 0
+
   const [expanded, setExpanded] = useState(readExpanded)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(show?.team_brief || '')
@@ -110,7 +148,7 @@ export default function TeamGoals({ show, isAdmin, onSaved }) {
   if (!show) return null
 
   // Nothing written yet: prompt an admin, stay out of everyone else's way.
-  if (!lines.length && !editing) {
+  if (!hasContent && !editing) {
     if (!isAdmin) return null
     return (
       <div
@@ -126,24 +164,19 @@ export default function TeamGoals({ show, isAdmin, onSaved }) {
     return (
       <div style={{ marginTop: 8, background: C.surface3, borderRadius: 11, padding: '11px 12px', border: '1px solid rgba(167,139,250,.3)' }}>
         <Heading />
-        <div style={{ fontSize: 10, color: C.text3, margin: '2px 0 7px' }}>One per line</div>
         <textarea
           value={draft}
           onChange={e => setDraft(e.target.value)}
           maxLength={MAX_BRIEF_CHARS}
           autoFocus
-          placeholder={'PSA Slabs 0-100: 7+ cert, grade 7+\n100-300: 7+ cert, grade 7+\n300-1000: check with Matt\nRaw singles 85%\nZards, promos, mews, pikachus'}
+          placeholder="Team goals"
           style={{
-            width: '100%', minHeight: 130, padding: '10px 11px', background: C.surface,
+            width: '100%', minHeight: 150, padding: '10px 11px', marginTop: 7, background: C.surface,
             border: `1px solid ${C.border2}`, borderRadius: 9, fontSize: 13, lineHeight: 1.6,
             color: C.text, outline: 'none', boxSizing: 'border-box', resize: 'vertical',
             fontFamily: 'inherit',
           }}
         />
-        <div style={{ fontSize: 10, color: C.text3, marginTop: 6, lineHeight: 1.5 }}>
-          Lines mentioning “check with” are flagged amber, a % turns blue, and a
-          list of card names turns green.
-        </div>
         {err && <div style={{ fontSize: 11, color: C.red, marginTop: 6 }}>{err}</div>}
         <div style={{ display: 'flex', gap: 8, marginTop: 9 }}>
           <button
@@ -173,7 +206,6 @@ export default function TeamGoals({ show, isAdmin, onSaved }) {
       >
         <Chevron open={expanded} />
         <Heading />
-        <span style={{ fontSize: 10.5, color: C.text3, fontWeight: 600 }}>{lines.length}</span>
         <div style={{ flex: 1 }} />
         {expanded && isAdmin && (
           <span
@@ -185,44 +217,55 @@ export default function TeamGoals({ show, isAdmin, onSaved }) {
         )}
       </div>
 
-      {expanded && <div style={{ padding: '0 11px 10px' }}>
-      {lines.map((line, i) => {
-        const cls = classifyRule(line)
-        return (
-          <div
-            key={i}
-            style={{
-              display: 'flex', alignItems: 'flex-start', gap: 8,
-              padding: '6px 0 6px 9px',
-              borderLeft: `3px solid ${cls.color}`,
-              marginBottom: i < lines.length - 1 ? 5 : 0,
-            }}
-          >
-            <div style={{
-              width: 18, height: 18, borderRadius: 5, flexShrink: 0, marginTop: 1,
-              background: cls.chipBg, color: cls.color,
-              fontSize: 9.5, fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {i + 1}
-            </div>
-            <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: C.text, lineHeight: 1.45 }}>
-              {line}
-            </div>
-            {cls.tag && (
-              <span style={{
-                flexShrink: 0, marginTop: 1, padding: '2px 7px', borderRadius: 20,
-                fontSize: 9, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase',
-                background: cls.chipBg, color: cls.color,
-              }}>
-                {cls.tag}
-              </span>
-            )}
-          </div>
-        )
-      })}
-      </div>}
+      {expanded && (
+        <div style={{ padding: '0 11px 10px' }}>
+          {groups.map((group, gi) => {
+            const color = SECTION_COLORS[gi % SECTION_COLORS.length]
+            return (
+              <div
+                key={gi}
+                style={{
+                  borderLeft: group.heading ? `3px solid ${color}` : `3px solid ${C.border2}`,
+                  paddingLeft: 10,
+                  marginBottom: gi < groups.length - 1 ? 11 : 0,
+                }}
+              >
+                {group.heading && (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 5 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color, letterSpacing: '.01em', flex: 1, minWidth: 0 }}>
+                      {group.heading}
+                    </div>
+                    {needsAsk(group.heading) && <AskTag />}
+                  </div>
+                )}
+
+                {group.items.map((item, ii) => (
+                  <div key={ii} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '2.5px 0' }}>
+                    <span style={{ color: C.text3, fontSize: 11, lineHeight: 1.5, flexShrink: 0 }}>·</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: C.text2, lineHeight: 1.5 }}>
+                      {item}
+                    </span>
+                    {needsAsk(item) && <AskTag />}
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
+  )
+}
+
+function AskTag() {
+  return (
+    <span style={{
+      flexShrink: 0, padding: '2px 7px', borderRadius: 20,
+      fontSize: 9, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase',
+      background: 'rgba(245,158,11,.15)', color: C.amber,
+    }}>
+      ask
+    </span>
   )
 }
 
