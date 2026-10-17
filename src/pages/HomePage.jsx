@@ -5,6 +5,7 @@ import { useNav } from '../context/NavigationContext'
 import { useActiveShow } from '../context/ShowContext'
 import { supabase, logActivity } from '../lib/supabase'
 import PullToRefresh from '../components/ui/PullToRefresh'
+import TeamBrief from '../components/ui/TeamBrief'
 import { C } from '../lib/theme'
 import { totalsWithTrades } from '../lib/finance'
 import { findTodaysShow, todayKey } from '../lib/showStats'
@@ -498,6 +499,7 @@ export default function HomePage() {
 
   const activeShow = shows.find(s => s.id === activeShowId)
   const todaysShow = useMemo(() => findTodaysShow(shows), [shows])
+  const briefShow = activeShow || todaysShow
   const liveNet = liveShow.sales - liveShow.buys - liveShow.fee
 
   const showParam = activeShowId ? `?show=${activeShowId}` : ''
@@ -656,6 +658,13 @@ export default function HomePage() {
               ))}
             </div>
           )}
+
+          <TeamBrief
+            key={briefShow?.id}
+            show={briefShow}
+            isAdmin={isAdmin}
+            onSaved={updated => setShows(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s))}
+          />
         </div>
       )}
 
