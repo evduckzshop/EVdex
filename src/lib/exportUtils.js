@@ -164,8 +164,6 @@ export async function fetchInventoryReport() {
 }
 
 export async function fetchShowPLReport(start, end) {
-  const { showMap, profileMap } = await loadLookups()
-
   // Get shows in date range (by event_date if available, or created_at)
   let showQ = supabase.from('shows').select('*').range(0, 9999)
   const { data: allShows, error: showErr } = await showQ
