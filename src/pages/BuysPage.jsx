@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useBuys, useContacts, useShows } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
@@ -7,6 +7,8 @@ import { useActiveShow } from '../context/ShowContext'
 import { C, Label, Input, Select, ChipGroup, DealCalc, CtaButton, GhostButton, Toast, RecordCard, AutocompleteInput, PaymentPicker } from '../components/ui/FormComponents'
 import LotCalculator, { entriesToLotData, lotDataToEntries, computeLotTotals } from '../components/ui/LotCalculator'
 import QuickLog from '../components/ui/QuickLog'
+import { findTodaysShow } from '../lib/showStats'
+import { useFormDraft } from '../lib/drafts'
 
 export default function BuysPage() {
   const { insert, update, rows, fetch, loading } = useBuys()
@@ -40,6 +42,26 @@ export default function BuysPage() {
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [quickLog, setQuickLog] = useState(false)
   const [lotEntries, setLotEntries] = useState([{ market: '', amount: '', pct: '', description: '', showDesc: true }])
+
+  const todaysShow = useMemo(() => findTodaysShow(shows), [shows])
+
+  const { restored: draftRestored, clear: clearDraft } = useFormDraft({
+    key: 'buy',
+    enabled: !editId && !quickLog,
+    isEmpty: !desc.trim() && !paid && !market && !source,
+    snapshot: {
+      buyType, desc, qty, condition, market, paid, pct, source, sourceContactId,
+      payment, notes, showId, lotEntries,
+    },
+    onRestore: d => {
+      setBuyType(d.buyType ?? 'Singles'); setDesc(d.desc ?? '')
+      setQty(d.qty ?? ''); setCondition(d.condition ?? 'NM')
+      setMarket(d.market ?? ''); setPaid(d.paid ?? ''); setPct(d.pct ?? defaultBuyPct)
+      setSource(d.source ?? ''); setSourceContactId(d.sourceContactId ?? null)
+      setPayment(d.payment ?? 'Cash'); setNotes(d.notes ?? ''); setShowId(d.showId ?? '')
+      if (d.lotEntries?.length) setLotEntries(d.lotEntries)
+    },
+  })
 
   const isLot = buyType === 'Lot'
   const isSlab = buyType === 'Slabs'
@@ -129,11 +151,13 @@ export default function BuysPage() {
       if (editId && editRecord) {
         await update(editId, record)
         setMsg({ text: 'Buy updated!', type: 'success' })
+        clearDraft()
         resetForm()
         setTimeout(() => navigate('/', { replace: true }), 600)
       } else {
         await insert(record)
         setMsg({ text: 'Buy saved!', type: 'success' })
+        clearDraft()
         resetForm()
         setTimeout(() => navigate('/'), 600)
       }
@@ -165,6 +189,12 @@ export default function BuysPage() {
       </div>
 
       <Toast message={msg.text} type={msg.type} />
+      {draftRestored && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: 'rgba(37,99,235,.08)', border: '1px solid rgba(37,99,235,.25)', borderRadius: 10, padding: '9px 12px', marginBottom: 10 }}>
+          <div style={{ fontSize: 11.5, color: C.accent2 }}>Restored an unsaved entry from this device.</div>
+          <div onClick={() => { clearDraft(); resetForm() }} style={{ fontSize: 11.5, color: C.red, cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}>Discard</div>
+        </div>
+      )}
 
       {!editId && (
         <div onClick={() => setQuickLog(!quickLog)} style={{ fontSize: 12, color: C.accent2, cursor: 'pointer', marginBottom: 10, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -248,6 +278,19 @@ export default function BuysPage() {
         {shows.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
       </Select>
 
+      {!showId && todaysShow && (
+        <div
+          onClick={() => setShowId(todaysShow.id)}
+          style={{
+            background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.25)',
+            borderRadius: 10, padding: '9px 12px', marginTop: 8, cursor: 'pointer',
+            fontSize: 11.5, color: C.amber, fontWeight: 500,
+          }}
+        >
+          {todaysShow.name} is today — tap to attach this purchase to it
+        </div>
+      )}
+
       <Label>Photo (optional)</Label>
       {photoName ? (
         <div style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, padding: '10px 12px', marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -278,7 +321,7 @@ export default function BuysPage() {
       <CtaButton onClick={handleSave} disabled={saving}>
         {saving ? 'Saving…' : editId ? 'Update purchase' : 'Save purchase'}
       </CtaButton>
-      <GhostButton onClick={() => editId ? navigate('/buys', { replace: true }) : navigate('/')}>Cancel</GhostButton>
+      <GhostButton onClick={() => { clearDraft(); editId ? navigate('/buys', { replace: true }) : navigate('/') }}>Cancel</GhostButton>
       </>
       )}
 
@@ -291,11 +334,11 @@ export default function BuysPage() {
           {loading ? (
             <div style={{ textAlign: 'center', color: C.text3, padding: 20 }}>Loading…</div>
           ) : rows.slice(0, 10).map(r => (
-            <div key={r.id} onClick={() => navigate(`/buys?edit=${r.id}`)} style={{ cursor: 'pointer' }}>
+            <div key={r.id} onClick={() => { if (!r._pending) navigate(`/buys?edit=${r.id}`) }} style={{ cursor: r._pending ? 'default' : 'pointer', opacity: r._pending ? 0.55 : 1 }}>
               <RecordCard
                 item={r}
                 amtColor={C.red} amt={`-$${Number(r.amount_paid).toFixed(0)}`}
-                meta={`${r.source || 'Unknown'} · ${r.pct_of_market ? r.pct_of_market + '% of mkt · ' : ''}${new Date(r.created_at).toLocaleDateString()}`}
+                meta={`${r.source || 'Unknown'} · ${r.pct_of_market ? r.pct_of_market + '% of mkt · ' : ''}${new Date(r.created_at).toLocaleDateString()}${r._pending ? ' · Waiting to upload' : ''}`}
               />
             </div>
           ))}

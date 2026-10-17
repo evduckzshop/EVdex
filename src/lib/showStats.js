@@ -22,6 +22,19 @@ export function showDate(show) {
     : new Date(show?.created_at)
 }
 
+// Local YYYY-MM-DD. Compared as a string against event_date so no timezone
+// parsing can shift the day.
+export function todayKey(d = new Date()) {
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+// The show happening today, if there is one and it isn't already finished.
+export function findTodaysShow(shows) {
+  const key = todayKey()
+  return (shows || []).find(s => s.event_date === key && s.status !== 'completed') || null
+}
+
 const EMPTY = {
   revenue: 0, cogs: 0, expenses: 0, fee: 0, net: 0,
   salesCount: 0, buysCount: 0, tradesCount: 0, txCount: 0, avgSale: 0,

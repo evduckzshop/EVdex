@@ -5,6 +5,7 @@ import { useNav } from '../../context/NavigationContext'
 import { signOut } from '../../lib/supabase'
 import PageTransition from './PageTransition'
 import { StaffBadgePill } from '../ui/StaffBadge'
+import PendingWrites from '../ui/PendingWrites'
 import { C } from '../../lib/theme'
 
 // Standalone nav items (always visible, not in a group)
@@ -42,6 +43,7 @@ const NAV_GROUPS = [
 // Standalone items at the bottom (below groups)
 const BOTTOM_STANDALONE = [
   { id: 'contacts', label: 'Contacts', path: '/contacts', adminOnly: false },
+  { id: 'certs',    label: 'Cert Transfer', path: '/certs', adminOnly: false },
   { id: 'gamble',   label: 'Gamble',   path: '/gamble',   adminOnly: false },
   { id: 'settings', label: 'Settings', path: '/settings', adminOnly: true },
 ]
@@ -294,6 +296,8 @@ export default function AppLayout({ children }) {
             </div>
           </div>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <PendingWrites />
         <button onClick={() => setSidebarOpen(true)} style={{
           width: 34, height: 34, borderRadius: '50%',
           background: profile?.avatar_url ? `url(${profile.avatar_url}) center/cover no-repeat` : 'linear-gradient(135deg, #2563EB, #7C3AED)',
@@ -303,6 +307,7 @@ export default function AppLayout({ children }) {
         }}>
           {!profile?.avatar_url && (profile?.full_name?.[0]?.toUpperCase() || 'U')}
         </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -346,7 +351,7 @@ export default function AppLayout({ children }) {
 }
 
 function getPageTitle(path) {
-  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/transactions': 'Transactions', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/shows/stats': 'Show Stats', '/export': 'Export', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/contacts/add': 'Add Contact', '/settings': 'Settings', '/profile': 'Profile', '/pong': 'Pong', '/gamble': 'Gamble', '/trade': 'Trade' }
+  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/transactions': 'Transactions', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/shows/stats': 'Show Stats', '/export': 'Export', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/contacts/add': 'Add Contact', '/settings': 'Settings', '/profile': 'Profile', '/pong': 'Pong', '/gamble': 'Gamble', '/trade': 'Trade', '/certs': 'Cert Transfer' }
   if (map[path]) return map[path]
   if (path.match(/^\/contacts\/[^/]+\/edit$/)) return 'Edit Contact'
   if (path.match(/^\/contacts\/[^/]+$/)) return 'Contact'

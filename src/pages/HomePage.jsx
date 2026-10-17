@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useNav } from '../context/NavigationContext'
@@ -7,6 +7,9 @@ import { supabase, logActivity } from '../lib/supabase'
 import PullToRefresh from '../components/ui/PullToRefresh'
 import { C } from '../lib/theme'
 import { totalsWithTrades } from '../lib/finance'
+import { findTodaysShow, todayKey } from '../lib/showStats'
+
+const SHOW_PROMPT_KEY = 'evdex_show_prompt_dismissed'
 
 function StatCard({ label, value, color }) {
   return (
@@ -342,6 +345,10 @@ export default function HomePage() {
   const [showCustomize, setShowCustomize] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [showMsg, setShowMsg] = useState('')
+  // Dismissal only lasts the day — tomorrow's show should prompt again.
+  const [promptDismissed, setPromptDismissed] = useState(
+    () => localStorage.getItem(SHOW_PROMPT_KEY) === todayKey()
+  )
 
   // Customizable preferences
   const userId = profile?.id || 'default'
@@ -490,6 +497,7 @@ export default function HomePage() {
   }, [activeShowId, shows])
 
   const activeShow = shows.find(s => s.id === activeShowId)
+  const todaysShow = useMemo(() => findTodaysShow(shows), [shows])
   const liveNet = liveShow.sales - liveShow.buys - liveShow.fee
 
   const showParam = activeShowId ? `?show=${activeShowId}` : ''
@@ -543,6 +551,32 @@ export default function HomePage() {
           ))}
         </div>
       </div>
+
+      {/* Forgetting to tap a show means a whole day of sales lands with no
+          show attached, and is invisible to every show report afterwards. */}
+      {todaysShow && !activeShowId && !promptDismissed && (
+        <div style={{ background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.3)', borderRadius: 14, padding: '12px 14px', marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: C.amber, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 3 }}>Happening today</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{todaysShow.name}</div>
+          <div style={{ fontSize: 11, color: C.text3, marginTop: 2 }}>
+            Start it so everything you log is attached to this show.
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button
+              onClick={() => handleSelectShow(todaysShow.id)}
+              style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, background: C.amber, color: '#111318' }}
+            >
+              Start show
+            </button>
+            <button
+              onClick={() => { setPromptDismissed(true); localStorage.setItem(SHOW_PROMPT_KEY, todayKey()) }}
+              style={{ padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, background: 'transparent', border: `1px solid ${C.border2}`, color: C.text3 }}
+            >
+              Not today
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Sits outside the bar below — completing the last active show
           unmounts that bar, and the confirmation has to outlive it. */}
