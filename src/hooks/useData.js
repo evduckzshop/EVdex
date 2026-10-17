@@ -71,7 +71,9 @@ function useTable(tableName) {
       actionType: `create_${tableName.replace(/s$/, '')}`,
       entityType: tableName,
       entityId: data.id,
-      summary: `Created ${tableName.replace(/s$/, '')}: ${record.description || record.name || record.id}`,
+      // `id` is server-generated, so it's absent from the caller's record —
+      // without the final fallback an unnamed row logs as "undefined".
+      summary: `Created ${tableName.replace(/s$/, '')}: ${record.description || record.name || record.id || 'untitled'}`,
       afterData: data,
     })
     commitRows(prev => [data, ...prev])
@@ -125,6 +127,7 @@ export function useExpenses() { return useTable('expenses') }
 export function useShows() { return useTable('shows') }
 export function useInventory() { return useTable('inventory') }
 export function useContacts() { return useTable('contacts') }
+export function useCertSheets() { return useTable('cert_sheets') }
 
 // Activity logs — read only
 export function useActivityLogs() {
