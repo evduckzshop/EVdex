@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSales, useShows } from '../hooks/useData'
 import { useContacts } from '../hooks/useData'
@@ -8,6 +8,8 @@ import { useActiveShow } from '../context/ShowContext'
 import { C, Label, Input, Select, ChipGroup, DealCalc, CtaButton, GhostButton, Toast, RecordCard, AutocompleteInput, PaymentPicker } from '../components/ui/FormComponents'
 import LotCalculator, { entriesToLotData, lotDataToEntries, computeLotTotals } from '../components/ui/LotCalculator'
 import QuickLog from '../components/ui/QuickLog'
+import { findTodaysShow } from '../lib/showStats'
+import { useFormDraft } from '../lib/drafts'
 
 // The chips and the edit-prefill "known types" check must stay in sync —
 // they were two separate literals, and 'Slabs' vs 'Slab' drifted apart.
@@ -48,6 +50,31 @@ export default function SalesPage() {
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [quickLog, setQuickLog] = useState(false)
   const [lotEntries, setLotEntries] = useState([{ market: '', amount: '', pct: '', description: '', showDesc: true }])
+
+  const todaysShow = useMemo(() => findTodaysShow(shows), [shows])
+
+  // Survive a refresh, a phone call, or iOS reclaiming the tab mid-sale.
+  // Disabled while editing — restoring a draft over a real record would be
+  // worse than losing the draft.
+  const { restored: draftRestored, clear: clearDraft } = useFormDraft({
+    key: 'sale',
+    enabled: !editId && !quickLog,
+    isEmpty: !desc.trim() && !price && !market && !buyer,
+    snapshot: {
+      saleType, customSaleType, desc, market, price, pct, cost, buyer, buyerContactId,
+      payment, splitEnabled, splitMethod1, splitMethod2, splitAmount1, showId, lotEntries,
+    },
+    onRestore: d => {
+      setSaleType(d.saleType ?? 'Singles'); setCustomSaleType(d.customSaleType ?? '')
+      setDesc(d.desc ?? ''); setMarket(d.market ?? ''); setPrice(d.price ?? '')
+      setPct(d.pct ?? defaultSalePct); setCost(d.cost ?? '')
+      setBuyer(d.buyer ?? ''); setBuyerContactId(d.buyerContactId ?? null)
+      setPayment(d.payment ?? 'Cash'); setSplitEnabled(!!d.splitEnabled)
+      setSplitMethod1(d.splitMethod1 ?? 'Cash'); setSplitMethod2(d.splitMethod2 ?? 'Venmo')
+      setSplitAmount1(d.splitAmount1 ?? ''); setShowId(d.showId ?? '')
+      if (d.lotEntries?.length) setLotEntries(d.lotEntries)
+    },
+  })
 
   const isLot = saleType === 'Lot'
 
@@ -163,11 +190,13 @@ export default function SalesPage() {
       if (editId && editRecord) {
         await update(editId, record)
         setMsg({ text: 'Sale updated!', type: 'success' })
+        clearDraft()
         resetForm()
         setTimeout(() => navigate('/', { replace: true }), 600)
       } else {
         await insert(record)
         setMsg({ text: 'Sale saved!', type: 'success' })
+        clearDraft()
         resetForm()
         setTimeout(() => navigate('/'), 600)
       }
@@ -198,6 +227,12 @@ export default function SalesPage() {
       </div>
 
       <Toast message={msg.text} type={msg.type} />
+      {draftRestored && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: 'rgba(37,99,235,.08)', border: '1px solid rgba(37,99,235,.25)', borderRadius: 10, padding: '9px 12px', marginBottom: 10 }}>
+          <div style={{ fontSize: 11.5, color: C.accent2 }}>Restored an unsaved entry from this device.</div>
+          <div onClick={() => { clearDraft(); resetForm() }} style={{ fontSize: 11.5, color: C.red, cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}>Discard</div>
+        </div>
+      )}
 
       {!editId && (
         <div onClick={() => setQuickLog(!quickLog)} style={{ fontSize: 12, color: C.accent2, cursor: 'pointer', marginBottom: 10, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -315,6 +350,19 @@ export default function SalesPage() {
         {shows.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
       </Select>
 
+      {!showId && todaysShow && (
+        <div
+          onClick={() => setShowId(todaysShow.id)}
+          style={{
+            background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.25)',
+            borderRadius: 10, padding: '9px 12px', marginTop: 8, cursor: 'pointer',
+            fontSize: 11.5, color: C.amber, fontWeight: 500,
+          }}
+        >
+          {todaysShow.name} is today — tap to attach this sale to it
+        </div>
+      )}
+
       <Label>Photo (optional)</Label>
       {photoName ? (
         <div style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, padding: '10px 12px', marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -342,7 +390,7 @@ export default function SalesPage() {
       <CtaButton onClick={handleSave} disabled={saving} color="green">
         {saving ? 'Saving…' : editId ? 'Update sale' : 'Save sale'}
       </CtaButton>
-      <GhostButton onClick={() => editId ? navigate('/sales', { replace: true }) : navigate('/')}>Cancel</GhostButton>
+      <GhostButton onClick={() => { clearDraft(); editId ? navigate('/sales', { replace: true }) : navigate('/') }}>Cancel</GhostButton>
       </>
       )}
 
@@ -355,11 +403,11 @@ export default function SalesPage() {
           {loading ? (
             <div style={{ textAlign: 'center', color: C.text3, padding: 20 }}>Loading…</div>
           ) : rows.slice(0, 10).map(r => (
-            <div key={r.id} onClick={() => navigate(`/sales?edit=${r.id}`)} style={{ cursor: 'pointer' }}>
+            <div key={r.id} onClick={() => { if (!r._pending) navigate(`/sales?edit=${r.id}`) }} style={{ cursor: r._pending ? 'default' : 'pointer', opacity: r._pending ? 0.55 : 1 }}>
               <RecordCard
                 item={r}
                 amtColor={C.green} amt={`+$${Number(r.sale_price).toFixed(0)}`}
-                meta={`${r.buyer || 'Unknown'} · ${r.pct_of_market ? r.pct_of_market + '% of mkt · ' : ''}${new Date(r.created_at).toLocaleDateString()}`}
+                meta={`${r.buyer || 'Unknown'} · ${r.pct_of_market ? r.pct_of_market + '% of mkt · ' : ''}${new Date(r.created_at).toLocaleDateString()}${r._pending ? ' · Waiting to upload' : ''}`}
               />
             </div>
           ))}

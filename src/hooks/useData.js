@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { supabase, logActivity } from '../lib/supabase'
+import { enqueue, isRetryable } from '../lib/pendingQueue'
 import { useAuth } from '../context/AuthContext'
 
 // Generic hook for any table with created_by
@@ -45,8 +46,27 @@ function useTable(tableName) {
     const now = new Date().toISOString()
     const row = { ...record, created_by: user.id, created_at: now }
     if (!noUpdatedAt.includes(tableName)) row.updated_at = now
-    const { data, error } = await supabase.from(tableName).insert(row).select().single()
-    if (error) throw error
+    let res
+    try {
+      res = await supabase.from(tableName).insert(row).select().single()
+    } catch (e) {
+      res = { data: null, error: e }
+    }
+    const { data, error } = res
+
+    if (error) {
+      // A dropped connection must never cost a sale at a show. Park it, show
+      // it locally, and let the header badge track the upload. Anything the
+      // server actively rejected still throws, because retrying can't fix it.
+      if (isRetryable(error)) {
+        const entry = enqueue(tableName, row)
+        const optimistic = { ...row, id: entry.id, _pending: true }
+        commitRows(prev => [optimistic, ...prev])
+        return optimistic
+      }
+      throw error
+    }
+
     await logActivity({
       actionType: `create_${tableName.replace(/s$/, '')}`,
       entityType: tableName,

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { compressImage } from './image'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -97,29 +98,42 @@ export async function logActivity({ actionType, entityType, entityId, summary, b
 // ── File validation helper ────────────────────────────────────
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+// Accept what a phone camera actually produces; compressImage brings it down
+// to size before anything leaves the device.
+const MAX_INPUT_SIZE = 25 * 1024 * 1024
+const MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 
 function validateImageFile(file) {
   if (!file) throw new Error('No file provided')
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     throw new Error('Invalid file type. Please upload a JPG, PNG, WebP, or GIF image.')
   }
-  if (file.size > MAX_FILE_SIZE) {
-    throw new Error('File too large. Maximum size is 5MB.')
+  if (file.size > MAX_INPUT_SIZE) {
+    throw new Error('File too large. Maximum size is 25MB.')
   }
-  // Use MIME type for extension instead of filename (prevents spoofing)
-  return file.type.split('/')[1].replace('jpeg', 'jpg')
+}
+
+// Compress, then confirm the result is actually uploadable.
+async function prepareUpload(file) {
+  validateImageFile(file)
+  const prepared = await compressImage(file)
+  if (prepared.size > MAX_UPLOAD_SIZE) {
+    throw new Error('Image is too large to upload even after compression. Try a smaller photo.')
+  }
+  // Extension comes from the MIME type, not the filename (prevents spoofing).
+  const ext = prepared.type.split('/')[1].replace('jpeg', 'jpg')
+  return { file: prepared, ext }
 }
 
 // ── Avatar upload helper ──────────────────────────────────────
 
 export async function uploadAvatar(userId, file) {
-  const ext = validateImageFile(file)
+  const { file: upload, ext } = await prepareUpload(file)
   const path = `${userId}/avatar.${ext}`
 
   const { error: uploadError } = await supabase.storage
     .from('avatars')
-    .upload(path, file, { upsert: true, contentType: file.type })
+    .upload(path, upload, { upsert: true, contentType: upload.type })
   if (uploadError) throw uploadError
 
   const { data } = supabase.storage.from('avatars').getPublicUrl(path)
@@ -140,12 +154,12 @@ export async function uploadAvatar(userId, file) {
 // ── Photo upload helper ───────────────────────────────────────
 
 export async function uploadPhoto(userId, file) {
-  const ext = validateImageFile(file)
+  const { file: upload, ext } = await prepareUpload(file)
   const path = `${userId}/${Date.now()}.${ext}`
 
   const { error: uploadError } = await supabase.storage
     .from('photos')
-    .upload(path, file, { upsert: false, contentType: file.type })
+    .upload(path, upload, { upsert: false, contentType: upload.type })
   if (uploadError) throw uploadError
 
   const { data } = supabase.storage.from('photos').getPublicUrl(path)
