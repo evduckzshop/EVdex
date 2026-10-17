@@ -65,10 +65,10 @@ export default function PortalDashboard() {
   const toNext = tier?.points_to_next_tier ? Math.ceil(tier.points_to_next_tier) : null
 
   // Find highest earned progression badge (lifetime_spend based)
-  const progressionBadge = badges
+  const topSpendBadge = badges
     .filter(b => b.badge_definitions?.threshold?.lifetime_spend)
-    .sort((a, b) => (b.badge_definitions.threshold.lifetime_spend || 0) - (a.badge_definitions.threshold.lifetime_spend || 0))
-    [0]?.badge_definitions || null
+    .sort((a, b) => (b.badge_definitions.threshold.lifetime_spend || 0) - (a.badge_definitions.threshold.lifetime_spend || 0))[0]
+  const progressionBadge = topSpendBadge?.badge_definitions || null
 
   // Progress to next tier
   const tierMins = { bronze: 0, silver: 500, gold: 2000, diamond: 10000 }
