@@ -43,7 +43,7 @@ const NAV_GROUPS = [
 // Standalone items at the bottom (below groups)
 const BOTTOM_STANDALONE = [
   { id: 'contacts', label: 'Contacts', path: '/contacts', adminOnly: false },
-  { id: 'certs',    label: 'Cert Transfer', path: '/certs', adminOnly: false },
+  { id: 'certs',    label: 'Saved Sheets', path: '/certs', adminOnly: false },
   { id: 'gamble',   label: 'Gamble',   path: '/gamble',   adminOnly: false },
   { id: 'settings', label: 'Settings', path: '/settings', adminOnly: true },
 ]
@@ -351,7 +351,7 @@ export default function AppLayout({ children }) {
 }
 
 function getPageTitle(path) {
-  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/transactions': 'Transactions', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/shows/stats': 'Show Stats', '/export': 'Export', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/contacts/add': 'Add Contact', '/settings': 'Settings', '/profile': 'Profile', '/pong': 'Pong', '/gamble': 'Gamble', '/trade': 'Trade', '/certs': 'Cert Transfer' }
+  const map = { '/': 'EVdex', '/sales': 'Log a sale', '/buys': 'Log a buy', '/inventory': 'Inventory', '/shows': 'Add Show', '/shows/manage': 'Shows', '/expenses': 'Expenses', '/transactions': 'Transactions', '/cashflow': 'Cash Flow', '/pl': 'Profit & Loss', '/reporting': 'Reporting', '/shows/stats': 'Show Stats', '/export': 'Export', '/employees': 'Team', '/activity': 'Activity Log', '/contacts': 'Contacts', '/contacts/add': 'Add Contact', '/settings': 'Settings', '/profile': 'Profile', '/pong': 'Pong', '/gamble': 'Gamble', '/trade': 'Trade', '/certs': 'Saved Sheets' }
   if (map[path]) return map[path]
   if (path.match(/^\/contacts\/[^/]+\/edit$/)) return 'Edit Contact'
   if (path.match(/^\/contacts\/[^/]+$/)) return 'Contact'
