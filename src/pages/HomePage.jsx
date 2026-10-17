@@ -5,7 +5,7 @@ import { useNav } from '../context/NavigationContext'
 import { useActiveShow } from '../context/ShowContext'
 import { supabase, logActivity } from '../lib/supabase'
 import PullToRefresh from '../components/ui/PullToRefresh'
-import TeamBrief from '../components/ui/TeamBrief'
+import TeamGoals from '../components/ui/TeamGoals'
 import { C } from '../lib/theme'
 import { totalsWithTrades } from '../lib/finance'
 import { findTodaysShow, todayKey } from '../lib/showStats'
@@ -659,7 +659,7 @@ export default function HomePage() {
             </div>
           )}
 
-          <TeamBrief
+          <TeamGoals
             key={briefShow?.id}
             show={briefShow}
             isAdmin={isAdmin}
